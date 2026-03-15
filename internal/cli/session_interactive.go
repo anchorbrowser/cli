@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	neturl "net/url"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/anchorbrowser/cli/internal/api"
 )
@@ -56,6 +58,13 @@ func validateInteractiveSessionCreateCompatibility(cmd *cobra.Command) error {
 }
 
 func runInteractiveSessionCreate(cmd *cobra.Command, app *App, apiKey string) (map[string]any, error) {
+	if shouldUseInteractiveTUI(app) {
+		return runInteractiveSessionCreateTUI(cmd, app, apiKey)
+	}
+	return runInteractiveSessionCreatePlain(cmd, app, apiKey)
+}
+
+func runInteractiveSessionCreatePlain(cmd *cobra.Command, app *App, apiKey string) (map[string]any, error) {
 	reader := bufio.NewReader(app.Stdin)
 	client := app.newAPIClient()
 	payload := map[string]any{}
@@ -96,6 +105,26 @@ func runInteractiveSessionCreate(cmd *cobra.Command, app *App, apiKey string) (m
 	}
 
 	return payload, nil
+}
+
+func shouldUseInteractiveTUI(app *App) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("ANCHORBROWSER_INTERACTIVE_UI"))) {
+	case "plain", "fallback":
+		return false
+	case "tui":
+		return true
+	}
+	return isTerminalReader(app.Stdin) && isTerminalWriter(app.Stderr)
+}
+
+func isTerminalReader(r io.Reader) bool {
+	f, ok := r.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
+}
+
+func isTerminalWriter(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
 }
 
 func resolveApplicationForInteractive(ctx context.Context, client *api.Client, apiKey, rawURL string) (string, map[string]any, error) {
@@ -153,7 +182,7 @@ func interactiveSelectOrCreateIdentity(
 		if len(identities) > 0 {
 			_, _ = fmt.Fprintln(out, "Available identities:")
 			for i, ident := range identities {
-				_, _ = fmt.Fprintf(out, "  %d) %s [%s] (%s)\n", i+1, firstString(ident["name"], ident["id"]), firstString(ident["status"]), firstString(ident["id"]))
+				_, _ = fmt.Fprintf(out, "  %d) %s\n", i+1, firstString(ident["name"], ident["id"]))
 			}
 			_, _ = fmt.Fprintln(out, "  c) Create new identity")
 			_, _ = fmt.Fprintln(out, "  s) Search identities")
@@ -239,7 +268,7 @@ func interactiveCreateIdentity(
 		if flow.Recommended {
 			recommended = " (recommended)"
 		}
-		_, _ = fmt.Fprintf(out, "  %d) %s%s [%s]\n", i+1, flow.Name, recommended, strings.Join(flow.Methods, ","))
+		_, _ = fmt.Fprintf(out, "  %d) %s%s\n", i+1, flow.Name, recommended)
 	}
 
 	var selected interactiveAuthFlow

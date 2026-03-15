@@ -81,6 +81,7 @@ anchorbrowser session recording fetch-primary --out recording.mp4
 Set `--no-cache` to force explicit session selection.
 When a command targets a cached/selected session, the CLI prints `Using session: <id>`.
 Interactive mode (`--interactive`) is exclusive with create payload flags (`--body`, `--initial-url`, proxy/browser/profile flags, identities/integrations).
+In a real terminal, interactive mode uses keyboard-driven TUI selection (arrows + type-to-search). In non-TTY contexts, it falls back to plain prompts.
 
 ### Session controls (flat)
 

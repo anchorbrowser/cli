@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -128,5 +129,27 @@ func TestFindRecentIdentityByNameFromResponse(t *testing.T) {
 	}
 	if bestID != "11111111-1111-4111-8111-111111111111" {
 		t.Fatalf("unexpected best identity id: %s", bestID)
+	}
+}
+
+func TestShouldUseInteractiveTUIFallsBackOnNonTTY(t *testing.T) {
+	t.Setenv("ANCHORBROWSER_INTERACTIVE_UI", "")
+	app := &App{
+		Stdin:  bytes.NewBufferString(""),
+		Stderr: &bytes.Buffer{},
+	}
+	if shouldUseInteractiveTUI(app) {
+		t.Fatalf("expected non-tty to fallback to plain mode")
+	}
+}
+
+func TestShouldUseInteractiveTUIEnvOverride(t *testing.T) {
+	t.Setenv("ANCHORBROWSER_INTERACTIVE_UI", "plain")
+	app := &App{
+		Stdin:  os.Stdin,
+		Stderr: os.Stderr,
+	}
+	if shouldUseInteractiveTUI(app) {
+		t.Fatalf("expected env override to force plain mode")
 	}
 }
