@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -13,16 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const anchorIcon = `
-           ███
-          █████
-         ███████
-           ███
-    ████████████████
-      ████████████
-        ████████
-          ████
-
+const anchorBanner = `
 _______             ______                   ________
 ___    |_______________  /_______________    ___  __ )_______________      _____________________
 __  /| |_  __ \  ___/_  __ \  __ \_  ___/    __  __  |_  ___/  __ \_ | /| / /_  ___/  _ \_  ___/
@@ -52,7 +44,7 @@ func (a *App) printVersionInfo(ctx context.Context) error {
 	}
 	currentSemver := normalizeSemver(a.Version)
 
-	if _, err := fmt.Fprint(a.Stdout, anchorIcon); err != nil {
+	if err := printBanner(a.Stdout); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprintf(a.Stdout, "ANCHORBROWSER VERSION %s\n", displayVersion); err != nil {
@@ -69,6 +61,11 @@ func (a *App) printVersionInfo(ctx context.Context) error {
 		return err
 	}
 	_, err = fmt.Fprintf(a.Stdout, "You are up to date (%s)\n", displayVersion)
+	return err
+}
+
+func printBanner(w io.Writer) error {
+	_, err := fmt.Fprint(w, anchorBanner)
 	return err
 }
 

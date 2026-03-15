@@ -87,7 +87,6 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 	cmd.AddCommand(newSessionCommand(app))
 	cmd.AddCommand(newTaskCommand(app))
 	cmd.AddCommand(newIdentityCommand(app))
-	cmd.AddCommand(newCreateAliasCommand(app))
 	cmd.AddCommand(newVersionCommand(app))
 
 	return cmd, nil

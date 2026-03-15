@@ -21,10 +21,6 @@ func newIdentityCreateCommand(app *App) *cobra.Command {
 	return newIdentityCreateCommandWithUse(app, "create", "Create an identity")
 }
 
-func newIdentityCreateAliasCommand(app *App) *cobra.Command {
-	return newIdentityCreateCommandWithUse(app, "identity", "Create an identity")
-}
-
 func newIdentityCreateCommandWithUse(app *App, use, short string) *cobra.Command {
 	var bodyPath string
 	var validateAsync bool

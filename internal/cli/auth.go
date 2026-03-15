@@ -39,6 +39,9 @@ func newAuthLoginCommand(app *App) *cobra.Command {
 				return err
 			}
 			if strings.TrimSpace(apiKey) == "" {
+				if err := printBanner(app.Stderr); err != nil {
+					return err
+				}
 				secret, err := promptSecret("Enter AnchorBrowser API key: ")
 				if err != nil {
 					return err

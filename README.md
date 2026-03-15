@@ -60,7 +60,6 @@ anchorbrowser auth current
 
 ```bash
 anchorbrowser session create --initial-url https://example.com --tag prod
-anchorbrowser create session --body session.json
 
 anchorbrowser session list --page 1 --limit 20
 anchorbrowser session get
@@ -97,6 +96,7 @@ anchorbrowser session clipboard get
 anchorbrowser session clipboard set --text "copied"
 anchorbrowser session copy
 anchorbrowser session paste --text "paste me"
+anchorbrowser session goto https://anchorbrowser.io
 anchorbrowser session goto --url https://anchorbrowser.io
 anchorbrowser session upload --file ./document.pdf
 ```
@@ -120,7 +120,6 @@ anchorbrowser task status <run-id>
 
 ```bash
 anchorbrowser identity create --source https://example.com/login --username user@example.com --password secret
-anchorbrowser create identity --body identity.yaml
 anchorbrowser identity get <identity-id>
 anchorbrowser identity update <identity-id> --name "Updated name"
 anchorbrowser identity delete <identity-id>

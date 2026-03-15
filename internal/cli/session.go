@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -48,10 +49,6 @@ func newSessionCommand(app *App) *cobra.Command {
 
 func newSessionCreateCommand(app *App) *cobra.Command {
 	return newSessionCreateCommandWithUse(app, "create", "Create a browser session")
-}
-
-func newSessionCreateAliasCommand(app *App) *cobra.Command {
-	return newSessionCreateCommandWithUse(app, "session", "Create a browser session")
 }
 
 func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command {
@@ -184,8 +181,12 @@ func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command 
 			}
 			noCache, _ := cmd.Flags().GetBool("no-cache")
 			if !noCache {
-				if cacheErr := app.cacheSessionID(extractSessionIDFromResponse(result)); cacheErr != nil {
+				cachedSessionID := extractSessionIDFromResponse(result)
+				if cacheErr := app.cacheSessionID(cachedSessionID); cacheErr != nil {
 					return cacheErr
+				}
+				if cachedSessionID != "" {
+					_, _ = fmt.Fprintf(app.Stderr, "Session %s created and cached as latest session.\n", cachedSessionID)
 				}
 			}
 			return app.printValue(result)
@@ -968,12 +969,26 @@ func newSessionPasteCommand(app *App) *cobra.Command {
 func newSessionGotoCommand(app *App) *cobra.Command {
 	var targetURL string
 	cmd := &cobra.Command{
-		Use:   "goto",
+		Use:   "goto [url]",
 		Short: "Navigate to URL",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !cmd.Flags().Changed("url") {
-				return fmt.Errorf("--url is required")
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var finalURL string
+			argURL := ""
+			if len(args) == 1 {
+				argURL = strings.TrimSpace(args[0])
+			}
+			flagURL := strings.TrimSpace(targetURL)
+			if argURL != "" && flagURL != "" && argURL != flagURL {
+				return fmt.Errorf("url specified twice with different values (arg=%q, --url=%q)", argURL, flagURL)
+			}
+			if argURL != "" {
+				finalURL = argURL
+			} else {
+				finalURL = flagURL
+			}
+			if finalURL == "" {
+				return fmt.Errorf("url is required (pass as `session goto <url>` or `--url`)")
 			}
 			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
@@ -983,7 +998,7 @@ func newSessionGotoCommand(app *App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionGoto(cmd.Context(), resolved.Value, sessionID, map[string]any{"url": targetURL})
+			result, err := app.newAPIClient().SessionGoto(cmd.Context(), resolved.Value, sessionID, map[string]any{"url": finalURL})
 			return app.printDryRunOrValue(result, err)
 		},
 	}
