@@ -19,13 +19,13 @@ func runInteractiveSessionCreateTUI(cmd *cobra.Command, app *App, apiKey string)
 	payload := map[string]any{}
 	completed := []string{}
 
-	authenticated, err := tuiSelectYesNo(app, "Do you need this session to be authenticated?", true, completed)
+	authenticated, err := tuiSelectYesNo(app, "Do you need this session to be authenticated?", true)
 	if err != nil {
 		return nil, err
 	}
 	completed = append(completed, fmt.Sprintf("Authenticated session: %s", yesNoLabel(authenticated)))
 	if authenticated {
-		applicationURL, err := tuiPromptText(app, "Application URL", true, false, completed)
+		applicationURL, err := tuiPromptText(app, "Application URL", true, false)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +34,7 @@ func runInteractiveSessionCreateTUI(cmd *cobra.Command, app *App, apiKey string)
 		if err != nil {
 			return nil, err
 		}
-		identityID, err := interactiveSelectOrCreateIdentityTUI(cmd.Context(), app, client, apiKey, appID, appObj, applicationURL, completed)
+		identityID, err := interactiveSelectOrCreateIdentityTUI(cmd.Context(), app, client, apiKey, appID, appObj, applicationURL)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +42,7 @@ func runInteractiveSessionCreateTUI(cmd *cobra.Command, app *App, apiKey string)
 		completed = append(completed, fmt.Sprintf("Identity attached: %s", identityID))
 	}
 
-	useRecommended, err := tuiSelectYesNo(app, "Use recommended anti-bot settings (stealth + captcha solver + proxy)?", true, completed)
+	useRecommended, err := tuiSelectYesNo(app, "Use recommended anti-bot settings (stealth + captcha solver + proxy)?", true)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,6 @@ func interactiveSelectOrCreateIdentityTUI(
 	apiKey, applicationID string,
 	application map[string]any,
 	applicationURL string,
-	completed []string,
 ) (string, error) {
 	listResult, err := client.ApplicationListIdentities(ctx, apiKey, applicationID, url.Values{})
 	if err != nil {
@@ -80,12 +79,12 @@ func interactiveSelectOrCreateIdentityTUI(
 	}
 	options = append(options, tuiOption{Label: "Create new identity", Value: "__create_identity__"})
 
-	selected, err := tuiSelectWithSearch(app, "Select identity", options, true, completed, "")
+	selected, err := tuiSelectWithSearch(app, "Select identity", options, true, "")
 	if err != nil {
 		return "", err
 	}
 	if selected == "__create_identity__" {
-		return interactiveCreateIdentityTUI(ctx, app, client, apiKey, applicationID, application, applicationURL, completed)
+		return interactiveCreateIdentityTUI(ctx, app, client, apiKey, applicationID, application, applicationURL)
 	}
 	return selected, nil
 }
@@ -97,7 +96,6 @@ func interactiveCreateIdentityTUI(
 	apiKey, applicationID string,
 	application map[string]any,
 	applicationURL string,
-	completed []string,
 ) (string, error) {
 	flowsResult, err := client.ApplicationListAuthFlows(ctx, apiKey, applicationID)
 	if err != nil {
@@ -106,7 +104,7 @@ func interactiveCreateIdentityTUI(
 	flows := extractAuthFlows(flowsResult)
 	if len(flows) == 0 {
 		_, _ = fmt.Fprintln(app.Stderr, "No auth flows found for this application; falling back to manual identity creation.")
-		return interactiveCreateIdentityManualTUI(ctx, app, client, apiKey, applicationID, completed)
+		return interactiveCreateIdentityManualTUI(ctx, app, client, apiKey, applicationID)
 	}
 
 	options := make([]tuiOption, 0, len(flows))
@@ -120,7 +118,7 @@ func interactiveCreateIdentityTUI(
 		flowByID[flow.ID] = flow
 	}
 
-	selectedID, err := tuiSelectWithSearch(app, "Select authentication flow", options, true, completed, "")
+	selectedID, err := tuiSelectWithSearch(app, "Select authentication flow", options, true, "")
 	if err != nil {
 		return "", err
 	}
@@ -131,10 +129,10 @@ func interactiveCreateIdentityTUI(
 
 	if requiresManualIdentityFlow(selectedFlow.Methods) {
 		_, _ = fmt.Fprintln(app.Stderr, "Selected flow requires manual browser completion.")
-		return interactiveCreateIdentityManualTUI(ctx, app, client, apiKey, applicationID, completed)
+		return interactiveCreateIdentityManualTUI(ctx, app, client, apiKey, applicationID)
 	}
 
-	credentials, identityName, err := promptCredentialsForFlowTUI(app, selectedFlow, completed)
+	credentials, identityName, err := promptCredentialsForFlowTUI(app, selectedFlow)
 	if err != nil {
 		return "", err
 	}
@@ -166,7 +164,6 @@ func interactiveCreateIdentityManualTUI(
 	app *App,
 	client *api.Client,
 	apiKey, applicationID string,
-	completed []string,
 ) (string, error) {
 	tokenResult, err := client.ApplicationCreateToken(ctx, apiKey, applicationID, map[string]any{})
 	if err != nil {
@@ -177,7 +174,7 @@ func interactiveCreateIdentityManualTUI(
 		return "", fmt.Errorf("token response missing token")
 	}
 
-	userName, err := tuiPromptText(app, "Display name for manual identity (optional)", false, false, completed)
+	userName, err := tuiPromptText(app, "Display name for manual identity (optional)", false, false)
 	if err != nil {
 		return "", err
 	}
@@ -193,7 +190,7 @@ func interactiveCreateIdentityManualTUI(
 	if openErr := openBrowserURL(manualURL); openErr != nil {
 		_, _ = fmt.Fprintf(app.Stderr, "Could not open browser automatically: %v\n", openErr)
 	}
-	_, _ = tuiPromptText(app, "Press Enter after finishing manual identity creation", false, false, completed)
+	_, _ = tuiPromptText(app, "Press Enter after finishing manual identity creation", false, false)
 
 	if strings.TrimSpace(userName) != "" {
 		if identityID, lookupErr := findRecentIdentityByName(ctx, client, apiKey, applicationID, userName, 45*time.Minute); lookupErr == nil && identityID != "" {
@@ -202,7 +199,7 @@ func interactiveCreateIdentityManualTUI(
 		}
 	}
 	for {
-		identityID, inputErr := tuiPromptText(app, "Paste created identity ID", true, false, completed)
+		identityID, inputErr := tuiPromptText(app, "Paste created identity ID", true, false)
 		if inputErr != nil {
 			return "", inputErr
 		}
@@ -213,17 +210,17 @@ func interactiveCreateIdentityManualTUI(
 	}
 }
 
-func promptCredentialsForFlowTUI(app *App, flow interactiveAuthFlow, completed []string) ([]any, string, error) {
+func promptCredentialsForFlowTUI(app *App, flow interactiveAuthFlow) ([]any, string, error) {
 	methods := append([]string(nil), flow.Methods...)
 	credentials := make([]any, 0, len(methods))
 	identityName := ""
 
 	if slicesContains(methods, "username_password") {
-		username, err := tuiPromptText(app, "Username", true, false, completed)
+		username, err := tuiPromptText(app, "Username", true, false)
 		if err != nil {
 			return nil, "", err
 		}
-		password, err := tuiPromptText(app, "Password", true, true, completed)
+		password, err := tuiPromptText(app, "Password", true, true)
 		if err != nil {
 			return nil, "", err
 		}
@@ -235,11 +232,11 @@ func promptCredentialsForFlowTUI(app *App, flow interactiveAuthFlow, completed [
 		identityName = username
 	}
 	if slicesContains(methods, "authenticator") {
-		secret, err := tuiPromptText(app, "Authenticator secret", true, false, completed)
+		secret, err := tuiPromptText(app, "Authenticator secret", true, false)
 		if err != nil {
 			return nil, "", err
 		}
-		otp, err := tuiPromptText(app, "Authenticator OTP (optional)", false, false, completed)
+		otp, err := tuiPromptText(app, "Authenticator OTP (optional)", false, false)
 		if err != nil {
 			return nil, "", err
 		}
@@ -255,7 +252,7 @@ func promptCredentialsForFlowTUI(app *App, flow interactiveAuthFlow, completed [
 	if slicesContains(methods, "custom") {
 		fields := make([]map[string]any, 0, len(flow.CustomFields))
 		for _, fieldName := range flow.CustomFields {
-			value, err := tuiPromptText(app, fieldName, true, false, completed)
+			value, err := tuiPromptText(app, fieldName, true, false)
 			if err != nil {
 				return nil, "", err
 			}
@@ -289,7 +286,7 @@ type tuiOption struct {
 	Value string
 }
 
-func tuiSelectYesNo(app *App, title string, defaultYes bool, completed []string) (bool, error) {
+func tuiSelectYesNo(app *App, title string, defaultYes bool) (bool, error) {
 	options := []tuiOption{
 		{Label: "Yes", Value: "yes"},
 		{Label: "No", Value: "no"},
@@ -298,15 +295,15 @@ func tuiSelectYesNo(app *App, title string, defaultYes bool, completed []string)
 	if !defaultYes {
 		defaultValue = "no"
 	}
-	choice, err := tuiSelectWithSearch(app, title, options, false, completed, defaultValue)
+	choice, err := tuiSelectWithSearch(app, title, options, false, defaultValue)
 	if err != nil {
 		return false, err
 	}
 	return choice == "yes", nil
 }
 
-func tuiSelectWithSearch(app *App, title string, options []tuiOption, searchable bool, completed []string, defaultValue string) (string, error) {
-	model := newTUISelectModel(title, options, searchable, completed, defaultValue)
+func tuiSelectWithSearch(app *App, title string, options []tuiOption, searchable bool, defaultValue string) (string, error) {
+	model := newTUISelectModel(title, options, searchable, defaultValue)
 	p := tea.NewProgram(model, tea.WithInput(app.Stdin), tea.WithOutput(app.Stderr))
 	result, err := p.Run()
 	if err != nil {
@@ -322,8 +319,8 @@ func tuiSelectWithSearch(app *App, title string, options []tuiOption, searchable
 	return finalModel.selectedValue, nil
 }
 
-func tuiPromptText(app *App, title string, required, secret bool, completed []string) (string, error) {
-	model := newTUITextModel(title, required, secret, completed)
+func tuiPromptText(app *App, title string, required, secret bool) (string, error) {
+	model := newTUITextModel(title, required, secret)
 	p := tea.NewProgram(model, tea.WithInput(app.Stdin), tea.WithOutput(app.Stderr))
 	result, err := p.Run()
 	if err != nil {
@@ -340,16 +337,15 @@ func tuiPromptText(app *App, title string, required, secret bool, completed []st
 }
 
 type tuiTextModel struct {
-	title     string
-	input     textinput.Model
-	required  bool
-	completed []string
-	canceled  bool
-	value     string
-	errMsg    string
+	title    string
+	input    textinput.Model
+	required bool
+	canceled bool
+	value    string
+	errMsg   string
 }
 
-func newTUITextModel(title string, required, secret bool, completed []string) tuiTextModel {
+func newTUITextModel(title string, required, secret bool) tuiTextModel {
 	in := textinput.New()
 	in.Focus()
 	in.Prompt = "> "
@@ -358,10 +354,9 @@ func newTUITextModel(title string, required, secret bool, completed []string) tu
 		in.EchoCharacter = '•'
 	}
 	return tuiTextModel{
-		title:     title,
-		input:     in,
-		required:  required,
-		completed: append([]string(nil), completed...),
+		title:    title,
+		input:    in,
+		required: required,
 	}
 }
 
@@ -396,14 +391,13 @@ func (m tuiTextModel) View() string {
 	if m.errMsg != "" {
 		body += "\n" + m.errMsg
 	}
-	return renderInteractiveFrame(m.title, m.completed, body, "(Enter to confirm, Esc to cancel)")
+	return renderPromptFrame(m.title, body, "(Enter to confirm, Esc to cancel)")
 }
 
 type tuiSelectModel struct {
 	title         string
 	options       []tuiOption
 	searchable    bool
-	completed     []string
 	query         textinput.Model
 	filtered      []int
 	cursor        int
@@ -411,7 +405,7 @@ type tuiSelectModel struct {
 	canceled      bool
 }
 
-func newTUISelectModel(title string, options []tuiOption, searchable bool, completed []string, defaultValue string) tuiSelectModel {
+func newTUISelectModel(title string, options []tuiOption, searchable bool, defaultValue string) tuiSelectModel {
 	q := textinput.New()
 	q.Prompt = "Search: "
 	if searchable {
@@ -421,7 +415,6 @@ func newTUISelectModel(title string, options []tuiOption, searchable bool, compl
 		title:      title,
 		options:    options,
 		searchable: searchable,
-		completed:  append([]string(nil), completed...),
 		query:      q,
 	}
 	m.recompute()
@@ -503,7 +496,19 @@ func (m tuiSelectModel) View() string {
 			b.WriteString(prefix + m.options[idx].Label + "\n")
 		}
 	}
-	return renderInteractiveFrame(m.title, m.completed, b.String(), "(↑/↓ to navigate, Enter to select, Esc to cancel)")
+	return renderPromptFrame(m.title, b.String(), "(↑/↓ to navigate, Enter to select, Esc to cancel)")
+}
+
+func renderPromptFrame(title, body, footer string) string {
+	var b strings.Builder
+	b.WriteString(title)
+	b.WriteString("\n\n")
+	b.WriteString(body)
+	if footer != "" {
+		b.WriteString("\n\n")
+		b.WriteString(footer)
+	}
+	return b.String()
 }
 
 func renderInteractiveFrame(title string, completed []string, body, footer string) string {

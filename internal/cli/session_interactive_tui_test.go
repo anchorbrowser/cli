@@ -11,7 +11,7 @@ func TestTUISelectModelFiltersByQuery(t *testing.T) {
 		{Label: "Alpha", Value: "a"},
 		{Label: "Beta", Value: "b"},
 		{Label: "Gamma", Value: "g"},
-	}, true, nil, "")
+	}, true, "")
 
 	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
 	m, ok := updated.(tuiSelectModel)
@@ -27,7 +27,7 @@ func TestTUISelectModelFiltersByQuery(t *testing.T) {
 }
 
 func TestTUITextModelRequiresValue(t *testing.T) {
-	model := newTUITextModel("Input", true, false, nil)
+	model := newTUITextModel("Input", true, false)
 	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m, ok := updated.(tuiTextModel)
 	if !ok {
@@ -42,7 +42,7 @@ func TestTUISelectModelDefaultValueDoesNotReorderOptions(t *testing.T) {
 	model := newTUISelectModel("Pick", []tuiOption{
 		{Label: "Yes", Value: "yes"},
 		{Label: "No", Value: "no"},
-	}, false, nil, "no")
+	}, false, "no")
 
 	if model.options[0].Value != "yes" || model.options[1].Value != "no" {
 		t.Fatalf("expected yes/no option ordering to remain stable")
