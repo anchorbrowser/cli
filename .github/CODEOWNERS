@@ -1,0 +1,11 @@
+# Default owner
+* @tomerwave
+
+# CI/CD and release governance
+/.github/workflows/* @tomerwave
+/.goreleaser.yaml @tomerwave
+
+# Auth and security-sensitive code
+/internal/auth/* @tomerwave
+/internal/cli/auth.go @tomerwave
+/internal/api/client.go @tomerwave
