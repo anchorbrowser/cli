@@ -12,6 +12,9 @@ func newSessionCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "session",
 		Short: "Manage browser sessions",
+		Aliases: []string{
+			"ses",
+		},
 	}
 	cmd.PersistentFlags().String("session-id", "", "Session ID to use when omitted from command args")
 	cmd.PersistentFlags().Bool("no-cache", false, "Do not use cached latest session ID when session ID is omitted")

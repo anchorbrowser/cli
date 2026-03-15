@@ -59,6 +59,9 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 		Short:         "AnchorBrowser CLI",
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if err := output.ValidateFormat(global.Output); err != nil {
 				return err
@@ -88,6 +91,7 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 	cmd.AddCommand(newTaskCommand(app))
 	cmd.AddCommand(newIdentityCommand(app))
 	cmd.AddCommand(newVersionCommand(app))
+	cmd.AddCommand(newInternalCompletionCommand())
 
 	return cmd, nil
 }
