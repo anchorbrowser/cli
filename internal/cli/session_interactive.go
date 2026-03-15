@@ -61,6 +61,9 @@ func runInteractiveSessionCreate(cmd *cobra.Command, app *App, apiKey string) (m
 	if shouldUseInteractiveTUI(app) {
 		return runInteractiveSessionCreateTUI(cmd, app, apiKey)
 	}
+	if err := printBanner(app.Stderr); err != nil {
+		return nil, err
+	}
 	return runInteractiveSessionCreatePlain(cmd, app, apiKey)
 }
 
@@ -97,11 +100,6 @@ func runInteractiveSessionCreatePlain(cmd *cobra.Command, app *App, apiKey strin
 	}
 	if useRecommended {
 		applyRecommendedAntiBotPayload(payload)
-	}
-	if authenticated {
-		_, _ = fmt.Fprintln(app.Stderr, "Creating an authenticated session...")
-	} else {
-		_, _ = fmt.Fprintln(app.Stderr, "Creating a session...")
 	}
 
 	return payload, nil

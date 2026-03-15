@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -193,7 +196,7 @@ func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command 
 			}
 
 			client := app.newAPIClient()
-			result, err := client.SessionCreate(cmd.Context(), resolved.Value, payload)
+			result, err := createSessionWithProgress(cmd.Context(), app.Stderr, client, resolved.Value, payload, interactive)
 			if err != nil {
 				return app.printDryRunOrValue(result, err)
 			}
@@ -231,6 +234,79 @@ func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command 
 	cmd.Flags().StringSliceVar(&identityIDs, "identity-id", nil, "Identity IDs to attach (repeatable)")
 	cmd.Flags().StringSliceVar(&integrationIDs, "integration-id", nil, "Integration IDs to attach (repeatable)")
 	return cmd
+}
+
+func createSessionWithProgress(
+	ctx context.Context,
+	out io.Writer,
+	client interface {
+		SessionCreate(ctx context.Context, apiKey string, body any) (any, error)
+	},
+	apiKey string,
+	payload map[string]any,
+	interactive bool,
+) (any, error) {
+	if !interactive {
+		return client.SessionCreate(ctx, apiKey, payload)
+	}
+
+	message := "Creating a session"
+	if payloadHasIdentity(payload) {
+		message = "Creating an authenticated session"
+	}
+	if !isTerminalWriter(out) {
+		_, _ = fmt.Fprintf(out, "%s...\n", message)
+		return client.SessionCreate(ctx, apiKey, payload)
+	}
+
+	type createResult struct {
+		value any
+		err   error
+	}
+
+	results := make(chan createResult, 1)
+	go func() {
+		value, err := client.SessionCreate(ctx, apiKey, payload)
+		results <- createResult{value: value, err: err}
+	}()
+
+	dotCount := 0
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+	render := func() {
+		_, _ = fmt.Fprintf(out, "\r%s%s", message, strings.Repeat(".", dotCount))
+	}
+	render()
+
+	for {
+		select {
+		case result := <-results:
+			if result.err == nil {
+				_, _ = fmt.Fprintf(out, "\r%s... done\n", message)
+			} else {
+				_, _ = fmt.Fprintf(out, "\r%s...\n", message)
+			}
+			return result.value, result.err
+		case <-ticker.C:
+			dotCount = (dotCount + 1) % 4
+			render()
+		case <-ctx.Done():
+			_, _ = fmt.Fprintln(out)
+			return nil, ctx.Err()
+		}
+	}
+}
+
+func payloadHasIdentity(payload map[string]any) bool {
+	raw := payload["identities"]
+	switch values := raw.(type) {
+	case []map[string]any:
+		return len(values) > 0
+	case []any:
+		return len(values) > 0
+	default:
+		return false
+	}
 }
 
 func newSessionListCommand(app *App) *cobra.Command {

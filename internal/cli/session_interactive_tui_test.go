@@ -11,7 +11,7 @@ func TestTUISelectModelFiltersByQuery(t *testing.T) {
 		{Label: "Alpha", Value: "a"},
 		{Label: "Beta", Value: "b"},
 		{Label: "Gamma", Value: "g"},
-	}, true)
+	}, true, nil, "")
 
 	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
 	m, ok := updated.(tuiSelectModel)
@@ -27,7 +27,7 @@ func TestTUISelectModelFiltersByQuery(t *testing.T) {
 }
 
 func TestTUITextModelRequiresValue(t *testing.T) {
-	model := newTUITextModel("Input", true, false)
+	model := newTUITextModel("Input", true, false, nil)
 	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m, ok := updated.(tuiTextModel)
 	if !ok {
@@ -35,5 +35,23 @@ func TestTUITextModelRequiresValue(t *testing.T) {
 	}
 	if m.errMsg == "" {
 		t.Fatalf("expected required value error message")
+	}
+}
+
+func TestTUISelectModelDefaultValueDoesNotReorderOptions(t *testing.T) {
+	model := newTUISelectModel("Pick", []tuiOption{
+		{Label: "Yes", Value: "yes"},
+		{Label: "No", Value: "no"},
+	}, false, nil, "no")
+
+	if model.options[0].Value != "yes" || model.options[1].Value != "no" {
+		t.Fatalf("expected yes/no option ordering to remain stable")
+	}
+	if len(model.filtered) != 2 {
+		t.Fatalf("expected both options to be visible")
+	}
+	selectedIndex := model.filtered[model.cursor]
+	if model.options[selectedIndex].Value != "no" {
+		t.Fatalf("expected cursor to default to no option, got %s", model.options[selectedIndex].Value)
 	}
 }
