@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   tag:
@@ -36,6 +37,7 @@ jobs:
           echo "previous=${PREVIOUS_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create and push tag
+        id: tag
         if: steps.versions.outputs.current != '' && steps.versions.outputs.current != steps.versions.outputs.previous
         env:
           VERSION: ${{ steps.versions.outputs.current }}
@@ -43,6 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag ${TAG} already exists. Skipping."
@@ -54,3 +57,13 @@ jobs:
 
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
+
+      - name: Dispatch release workflow for tag
+        if: steps.tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --ref "$TAG" -f tag="$TAG"
