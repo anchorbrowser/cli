@@ -22,7 +22,7 @@ builds:
       - arm64
 
 archives:
-  - id: default
+  - id: anchorbrowser
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats: [tar.gz]
     format_overrides:
