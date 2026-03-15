@@ -19,7 +19,7 @@ func runInteractiveSessionCreateTUI(cmd *cobra.Command, app *App, apiKey string)
 	payload := map[string]any{}
 	completed := []string{}
 
-	authenticated, err := tuiSelectYesNo(app, "Do you need this session to be authenticated?", false, completed)
+	authenticated, err := tuiSelectYesNo(app, "Do you need this session to be authenticated?", true, completed)
 	if err != nil {
 		return nil, err
 	}
@@ -42,13 +42,15 @@ func runInteractiveSessionCreateTUI(cmd *cobra.Command, app *App, apiKey string)
 		completed = append(completed, fmt.Sprintf("Identity attached: %s", identityID))
 	}
 
-	useRecommended, err := tuiSelectYesNo(app, "Use recommended anti-bot settings (stealth + captcha solver + proxy)?", false, completed)
+	useRecommended, err := tuiSelectYesNo(app, "Use recommended anti-bot settings (stealth + captcha solver + proxy)?", true, completed)
 	if err != nil {
 		return nil, err
 	}
 	if useRecommended {
 		applyRecommendedAntiBotPayload(payload)
 	}
+	completed = append(completed, fmt.Sprintf("Recommended anti-bot bundle: %s", yesNoLabel(useRecommended)))
+	attachInteractiveSummary(payload, completed)
 	return payload, nil
 }
 
@@ -305,7 +307,7 @@ func tuiSelectYesNo(app *App, title string, defaultYes bool, completed []string)
 
 func tuiSelectWithSearch(app *App, title string, options []tuiOption, searchable bool, completed []string, defaultValue string) (string, error) {
 	model := newTUISelectModel(title, options, searchable, completed, defaultValue)
-	p := tea.NewProgram(model, tea.WithInput(app.Stdin), tea.WithOutput(app.Stderr), tea.WithAltScreen())
+	p := tea.NewProgram(model, tea.WithInput(app.Stdin), tea.WithOutput(app.Stderr))
 	result, err := p.Run()
 	if err != nil {
 		return "", err
@@ -322,7 +324,7 @@ func tuiSelectWithSearch(app *App, title string, options []tuiOption, searchable
 
 func tuiPromptText(app *App, title string, required, secret bool, completed []string) (string, error) {
 	model := newTUITextModel(title, required, secret, completed)
-	p := tea.NewProgram(model, tea.WithInput(app.Stdin), tea.WithOutput(app.Stderr), tea.WithAltScreen())
+	p := tea.NewProgram(model, tea.WithInput(app.Stdin), tea.WithOutput(app.Stderr))
 	result, err := p.Run()
 	if err != nil {
 		return "", err

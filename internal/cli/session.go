@@ -249,15 +249,18 @@ func createSessionWithProgress(
 	if !interactive {
 		return client.SessionCreate(ctx, apiKey, payload)
 	}
+	completed := popInteractiveSummary(payload)
 
 	message := "Creating a session"
 	if payloadHasIdentity(payload) {
 		message = "Creating an authenticated session"
 	}
 	if !isTerminalWriter(out) {
+		printInteractiveCreateHeader(out, completed)
 		_, _ = fmt.Fprintf(out, "%s...\n", message)
 		return client.SessionCreate(ctx, apiKey, payload)
 	}
+	printInteractiveCreateHeader(out, completed)
 
 	type createResult struct {
 		value any
@@ -295,6 +298,41 @@ func createSessionWithProgress(
 			return nil, ctx.Err()
 		}
 	}
+}
+
+func popInteractiveSummary(payload map[string]any) []string {
+	if payload == nil {
+		return nil
+	}
+	raw, ok := payload[interactiveSummaryPayloadKey]
+	if !ok {
+		return nil
+	}
+	delete(payload, interactiveSummaryPayloadKey)
+	switch values := raw.(type) {
+	case []string:
+		return append([]string(nil), values...)
+	case []any:
+		out := make([]string, 0, len(values))
+		for _, item := range values {
+			value := strings.TrimSpace(fmt.Sprint(item))
+			if value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func printInteractiveCreateHeader(out io.Writer, completed []string) {
+	frame := strings.TrimRight(renderInteractiveFrame("Creating session", completed, "", ""), "\n")
+	if strings.TrimSpace(frame) == "" {
+		return
+	}
+	_, _ = fmt.Fprintln(out, frame)
+	_, _ = fmt.Fprintln(out)
 }
 
 func payloadHasIdentity(payload map[string]any) bool {

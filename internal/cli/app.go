@@ -82,7 +82,7 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 	cmd.PersistentFlags().StringVar(&global.APIKey, "api-key", "", "API key value (highest precedence)")
 	cmd.PersistentFlags().StringVar(&global.KeyName, "key", "", "Named API key profile to use")
 	cmd.PersistentFlags().StringVar(&global.BaseURL, "base-url", "https://api.anchorbrowser.io", "API base URL")
-	cmd.PersistentFlags().DurationVar(&global.Timeout, "timeout", 30*time.Second, "HTTP request timeout")
+	cmd.PersistentFlags().DurationVar(&global.Timeout, "timeout", 2*time.Minute, "HTTP request timeout")
 	cmd.PersistentFlags().StringVar(&global.Output, "output", "json", "Output format: json|yaml")
 	cmd.PersistentFlags().BoolVar(&global.Compact, "compact", false, "Compact output (json only)")
 	cmd.PersistentFlags().BoolVar(&global.DryRun, "dry-run", false, "Print request payloads without sending API calls")

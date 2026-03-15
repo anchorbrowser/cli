@@ -24,6 +24,8 @@ import (
 
 var uuidPattern = regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$`)
 
+const interactiveSummaryPayloadKey = "__interactive_completed_steps"
+
 func validateInteractiveSessionCreateCompatibility(cmd *cobra.Command) error {
 	incompatible := []string{
 		"body",
@@ -71,17 +73,20 @@ func runInteractiveSessionCreatePlain(cmd *cobra.Command, app *App, apiKey strin
 	reader := bufio.NewReader(app.Stdin)
 	client := app.newAPIClient()
 	payload := map[string]any{}
+	completed := []string{}
 
-	authenticated, err := promptYesNo(reader, app.Stderr, "Do you need this session to be authenticated? [y/N]: ", false)
+	authenticated, err := promptYesNo(reader, app.Stderr, "Do you need this session to be authenticated? [Y/n]: ", true)
 	if err != nil {
 		return nil, err
 	}
+	completed = append(completed, fmt.Sprintf("Authenticated session: %s", yesNoLabel(authenticated)))
 
 	if authenticated {
 		applicationURL, err := promptRequired(reader, app.Stderr, "Application URL: ")
 		if err != nil {
 			return nil, err
 		}
+		completed = append(completed, fmt.Sprintf("Application URL: %s", normalizeApplicationSourceURL(applicationURL)))
 		appID, appObj, err := resolveApplicationForInteractive(cmd.Context(), client, apiKey, applicationURL)
 		if err != nil {
 			return nil, err
@@ -92,17 +97,28 @@ func runInteractiveSessionCreatePlain(cmd *cobra.Command, app *App, apiKey strin
 			return nil, err
 		}
 		payload["identities"] = []map[string]any{{"id": identityID}}
+		completed = append(completed, fmt.Sprintf("Identity attached: %s", identityID))
 	}
 
-	useRecommended, err := promptYesNo(reader, app.Stderr, "Use recommended anti-bot settings (stealth + captcha solver + proxy)? [y/N]: ", false)
+	useRecommended, err := promptYesNo(reader, app.Stderr, "Use recommended anti-bot settings (stealth + captcha solver + proxy)? [Y/n]: ", true)
 	if err != nil {
 		return nil, err
 	}
 	if useRecommended {
 		applyRecommendedAntiBotPayload(payload)
 	}
+	completed = append(completed, fmt.Sprintf("Recommended anti-bot bundle: %s", yesNoLabel(useRecommended)))
+	attachInteractiveSummary(payload, completed)
 
 	return payload, nil
+}
+
+func attachInteractiveSummary(payload map[string]any, completed []string) {
+	if len(completed) == 0 {
+		return
+	}
+	snapshot := append([]string(nil), completed...)
+	payload[interactiveSummaryPayloadKey] = snapshot
 }
 
 func shouldUseInteractiveTUI(app *App) bool {
