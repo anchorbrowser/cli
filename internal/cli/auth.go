@@ -2,6 +2,8 @@ package cli
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/anchorbrowser/cli/internal/api"
 	"github.com/anchorbrowser/cli/internal/auth"
 )
 
@@ -42,10 +45,7 @@ func newAuthLoginCommand(app *App) *cobra.Command {
 				}
 				apiKey = secret
 			}
-			validationQuery := url.Values{}
-			validationQuery.Set("page", "1")
-			validationQuery.Set("limit", "1")
-			if _, err := app.newAPIClient().SessionList(cmd.Context(), apiKey, validationQuery); err != nil {
+			if err := app.validateAPIKey(cmd.Context(), apiKey); err != nil {
 				return fmt.Errorf("api key validation failed: %w", err)
 			}
 			if err := app.Auth.Login(name, apiKey); err != nil {
@@ -181,4 +181,33 @@ func normalizeAuthName(name string) string {
 		return "default"
 	}
 	return name
+}
+
+func (a *App) validateAPIKey(ctx context.Context, apiKey string) error {
+	client := a.newAPIClient()
+
+	// Primary validation probe.
+	if _, err := client.SessionStatusAll(ctx, apiKey, url.Values{}); err == nil {
+		return nil
+	} else if isAuthDenied(err) {
+		return err
+	}
+
+	// Fallback probe for accounts where a single endpoint may be unstable.
+	query := url.Values{}
+	query.Set("page", "1")
+	query.Set("limit", "1")
+	_, err := client.SessionHistory(ctx, apiKey, query)
+	if err == nil {
+		return nil
+	}
+	return err
+}
+
+func isAuthDenied(err error) bool {
+	var reqErr *api.RequestError
+	if !errors.As(err, &reqErr) {
+		return false
+	}
+	return reqErr.StatusCode == 401 || reqErr.StatusCode == 403
 }
