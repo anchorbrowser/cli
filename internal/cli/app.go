@@ -34,6 +34,7 @@ type App struct {
 	Global  *GlobalOptions
 	Config  *config.Manager
 	Auth    *auth.Store
+	Stdin   io.Reader
 	Stdout  io.Writer
 	Stderr  io.Writer
 }
@@ -50,6 +51,7 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 		Version: version,
 		Global:  global,
 		Config:  cfgManager,
+		Stdin:   os.Stdin,
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 	}

@@ -95,6 +95,28 @@ func TestApplicationListIdentitiesMapping(t *testing.T) {
 	})
 }
 
+func TestApplicationCreateMapping(t *testing.T) {
+	testMethodPathBody(t, func(c *Client, ctx context.Context) (any, error) {
+		return c.ApplicationCreate(ctx, "k", map[string]any{"source": "https://netsweet.co"})
+	}, http.MethodPost, "/v1/applications", func(_ *http.Request, body map[string]any) {
+		if got := body["source"]; got != "https://netsweet.co" {
+			t.Fatalf("unexpected source: %#v", got)
+		}
+	})
+}
+
+func TestApplicationListAuthFlowsMapping(t *testing.T) {
+	testMethodPathBody(t, func(c *Client, ctx context.Context) (any, error) {
+		return c.ApplicationListAuthFlows(ctx, "k", "app-1")
+	}, http.MethodGet, "/v1/applications/app-1/auth-flows", func(_ *http.Request, _ map[string]any) {})
+}
+
+func TestApplicationCreateTokenMapping(t *testing.T) {
+	testMethodPathBody(t, func(c *Client, ctx context.Context) (any, error) {
+		return c.ApplicationCreateToken(ctx, "k", "app-1", map[string]any{})
+	}, http.MethodPost, "/v1/applications/app-1/tokens", func(_ *http.Request, _ map[string]any) {})
+}
+
 func testMethodPathBody(t *testing.T, run func(c *Client, ctx context.Context) (any, error), wantMethod, wantPath string, assertFn func(r *http.Request, body map[string]any)) {
 	t.Helper()
 

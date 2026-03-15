@@ -73,6 +73,7 @@ func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command 
 	var profilePersist bool
 	var identityIDs []string
 	var integrationIDs []string
+	var interactive bool
 
 	cmd := &cobra.Command{
 		Use:   use,
@@ -83,98 +84,112 @@ func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command 
 				return err
 			}
 
-			payload, err := parseBodyAsMap(bodyPath)
-			if err != nil {
-				return err
-			}
-			if payload == nil {
-				payload = map[string]any{}
-			}
+			var payload map[string]any
+			if interactive {
+				if app.Global.DryRun {
+					return fmt.Errorf("--interactive is not supported with --dry-run")
+				}
+				if err := validateInteractiveSessionCreateCompatibility(cmd); err != nil {
+					return err
+				}
+				payload, err = runInteractiveSessionCreate(cmd, app, resolved.Value)
+				if err != nil {
+					return err
+				}
+			} else {
+				payload, err = parseBodyAsMap(bodyPath)
+				if err != nil {
+					return err
+				}
+				if payload == nil {
+					payload = map[string]any{}
+				}
 
-			if cmd.Flags().Changed("initial-url") || cmd.Flags().Changed("tag") || cmd.Flags().Changed("recording") ||
-				cmd.Flags().Changed("max-duration") || cmd.Flags().Changed("idle-timeout") ||
-				cmd.Flags().Changed("proxy-active") || cmd.Flags().Changed("proxy-type") ||
-				cmd.Flags().Changed("proxy-country-code") || cmd.Flags().Changed("proxy-region") || cmd.Flags().Changed("proxy-city") {
-				session := ensureMap(payload, "session")
-				if cmd.Flags().Changed("initial-url") {
-					session["initial_url"] = initialURL
+				if cmd.Flags().Changed("initial-url") || cmd.Flags().Changed("tag") || cmd.Flags().Changed("recording") ||
+					cmd.Flags().Changed("max-duration") || cmd.Flags().Changed("idle-timeout") ||
+					cmd.Flags().Changed("proxy-active") || cmd.Flags().Changed("proxy-type") ||
+					cmd.Flags().Changed("proxy-country-code") || cmd.Flags().Changed("proxy-region") || cmd.Flags().Changed("proxy-city") {
+					session := ensureMap(payload, "session")
+					if cmd.Flags().Changed("initial-url") {
+						session["initial_url"] = initialURL
+					}
+					if cmd.Flags().Changed("tag") {
+						session["tags"] = tags
+					}
+					if cmd.Flags().Changed("recording") {
+						session["recording"] = map[string]any{"active": recording}
+					}
+					if cmd.Flags().Changed("max-duration") || cmd.Flags().Changed("idle-timeout") {
+						timeout := ensureMap(session, "timeout")
+						if cmd.Flags().Changed("max-duration") {
+							timeout["max_duration"] = maxDuration
+						}
+						if cmd.Flags().Changed("idle-timeout") {
+							timeout["idle_timeout"] = idleTimeout
+						}
+					}
+					if cmd.Flags().Changed("proxy-active") || cmd.Flags().Changed("proxy-type") || cmd.Flags().Changed("proxy-country-code") || cmd.Flags().Changed("proxy-region") || cmd.Flags().Changed("proxy-city") {
+						proxy := map[string]any{}
+						if cmd.Flags().Changed("proxy-active") {
+							proxy["active"] = proxyActive
+						}
+						if cmd.Flags().Changed("proxy-type") {
+							proxy["type"] = proxyType
+						}
+						if cmd.Flags().Changed("proxy-country-code") {
+							proxy["country_code"] = proxyCountry
+						}
+						if cmd.Flags().Changed("proxy-region") {
+							proxy["region"] = proxyRegion
+						}
+						if cmd.Flags().Changed("proxy-city") {
+							proxy["city"] = proxyCity
+						}
+						session["proxy"] = proxy
+					}
 				}
-				if cmd.Flags().Changed("tag") {
-					session["tags"] = tags
-				}
-				if cmd.Flags().Changed("recording") {
-					session["recording"] = map[string]any{"active": recording}
-				}
-				if cmd.Flags().Changed("max-duration") || cmd.Flags().Changed("idle-timeout") {
-					timeout := ensureMap(session, "timeout")
-					if cmd.Flags().Changed("max-duration") {
-						timeout["max_duration"] = maxDuration
-					}
-					if cmd.Flags().Changed("idle-timeout") {
-						timeout["idle_timeout"] = idleTimeout
-					}
-				}
-				if cmd.Flags().Changed("proxy-active") || cmd.Flags().Changed("proxy-type") || cmd.Flags().Changed("proxy-country-code") || cmd.Flags().Changed("proxy-region") || cmd.Flags().Changed("proxy-city") {
-					proxy := map[string]any{}
-					if cmd.Flags().Changed("proxy-active") {
-						proxy["active"] = proxyActive
-					}
-					if cmd.Flags().Changed("proxy-type") {
-						proxy["type"] = proxyType
-					}
-					if cmd.Flags().Changed("proxy-country-code") {
-						proxy["country_code"] = proxyCountry
-					}
-					if cmd.Flags().Changed("proxy-region") {
-						proxy["region"] = proxyRegion
-					}
-					if cmd.Flags().Changed("proxy-city") {
-						proxy["city"] = proxyCity
-					}
-					session["proxy"] = proxy
-				}
-			}
 
-			if cmd.Flags().Changed("headless") || cmd.Flags().Changed("viewport-width") || cmd.Flags().Changed("viewport-height") || cmd.Flags().Changed("profile-name") || cmd.Flags().Changed("profile-persist") {
-				browser := ensureMap(payload, "browser")
-				if cmd.Flags().Changed("headless") {
-					browser["headless"] = map[string]any{"active": headless}
+				if cmd.Flags().Changed("headless") || cmd.Flags().Changed("viewport-width") || cmd.Flags().Changed("viewport-height") || cmd.Flags().Changed("profile-name") || cmd.Flags().Changed("profile-persist") {
+					browser := ensureMap(payload, "browser")
+					if cmd.Flags().Changed("headless") {
+						browser["headless"] = map[string]any{"active": headless}
+					}
+					if cmd.Flags().Changed("viewport-width") || cmd.Flags().Changed("viewport-height") {
+						viewport := map[string]any{}
+						if cmd.Flags().Changed("viewport-width") {
+							viewport["width"] = viewportWidth
+						}
+						if cmd.Flags().Changed("viewport-height") {
+							viewport["height"] = viewportHeight
+						}
+						browser["viewport"] = viewport
+					}
+					if cmd.Flags().Changed("profile-name") || cmd.Flags().Changed("profile-persist") {
+						profile := map[string]any{}
+						if cmd.Flags().Changed("profile-name") {
+							profile["name"] = profileName
+						}
+						if cmd.Flags().Changed("profile-persist") {
+							profile["persist"] = profilePersist
+						}
+						browser["profile"] = profile
+					}
 				}
-				if cmd.Flags().Changed("viewport-width") || cmd.Flags().Changed("viewport-height") {
-					viewport := map[string]any{}
-					if cmd.Flags().Changed("viewport-width") {
-						viewport["width"] = viewportWidth
-					}
-					if cmd.Flags().Changed("viewport-height") {
-						viewport["height"] = viewportHeight
-					}
-					browser["viewport"] = viewport
-				}
-				if cmd.Flags().Changed("profile-name") || cmd.Flags().Changed("profile-persist") {
-					profile := map[string]any{}
-					if cmd.Flags().Changed("profile-name") {
-						profile["name"] = profileName
-					}
-					if cmd.Flags().Changed("profile-persist") {
-						profile["persist"] = profilePersist
-					}
-					browser["profile"] = profile
-				}
-			}
 
-			if cmd.Flags().Changed("identity-id") {
-				identities := make([]map[string]any, 0, len(identityIDs))
-				for _, id := range identityIDs {
-					identities = append(identities, map[string]any{"id": id})
+				if cmd.Flags().Changed("identity-id") {
+					identities := make([]map[string]any, 0, len(identityIDs))
+					for _, id := range identityIDs {
+						identities = append(identities, map[string]any{"id": id})
+					}
+					payload["identities"] = identities
 				}
-				payload["identities"] = identities
-			}
-			if cmd.Flags().Changed("integration-id") {
-				integrations := make([]map[string]any, 0, len(integrationIDs))
-				for _, id := range integrationIDs {
-					integrations = append(integrations, map[string]any{"id": id})
+				if cmd.Flags().Changed("integration-id") {
+					integrations := make([]map[string]any, 0, len(integrationIDs))
+					for _, id := range integrationIDs {
+						integrations = append(integrations, map[string]any{"id": id})
+					}
+					payload["integrations"] = integrations
 				}
-				payload["integrations"] = integrations
 			}
 
 			client := app.newAPIClient()
@@ -197,6 +212,7 @@ func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command 
 	}
 
 	cmd.Flags().StringVar(&bodyPath, "body", "", "Path to JSON/YAML body file, '-' for stdin, or inline JSON")
+	cmd.Flags().BoolVar(&interactive, "interactive", false, "Run interactive wizard to build session create payload")
 	cmd.Flags().StringVar(&initialURL, "initial-url", "", "Session initial URL")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Session tags (repeatable)")
 	cmd.Flags().BoolVar(&recording, "recording", true, "Enable session recording")

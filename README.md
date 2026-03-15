@@ -62,6 +62,7 @@ anchorbrowser auth current
 
 ```bash
 anchorbrowser session create --initial-url https://example.com --tag prod
+anchorbrowser session create --interactive
 
 anchorbrowser session list --page 1 --limit 20
 anchorbrowser session get
@@ -79,6 +80,7 @@ anchorbrowser session recording fetch-primary --out recording.mp4
 `--session-id` flag > cached latest session.
 Set `--no-cache` to force explicit session selection.
 When a command targets a cached/selected session, the CLI prints `Using session: <id>`.
+Interactive mode (`--interactive`) is exclusive with create payload flags (`--body`, `--initial-url`, proxy/browser/profile flags, identities/integrations).
 
 ### Session controls (flat)
 

@@ -55,3 +55,25 @@ func TestRunAgentIsUnderSession(t *testing.T) {
 		t.Fatalf("expected top-level agent-run to be unavailable")
 	}
 }
+
+func TestSessionCreateInteractiveRejectsPayloadFlags(t *testing.T) {
+	cmd, err := NewRootCommand("test")
+	if err != nil {
+		t.Fatalf("NewRootCommand: %v", err)
+	}
+	cmd.SetArgs([]string{"--api-key", "dummy", "session", "create", "--interactive", "--body", "{}"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatalf("expected validation error for --interactive with --body")
+	}
+}
+
+func TestSessionCreateInteractiveRejectsDryRun(t *testing.T) {
+	cmd, err := NewRootCommand("test")
+	if err != nil {
+		t.Fatalf("NewRootCommand: %v", err)
+	}
+	cmd.SetArgs([]string{"--api-key", "dummy", "--dry-run", "session", "create", "--interactive"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatalf("expected validation error for --interactive with --dry-run")
+	}
+}

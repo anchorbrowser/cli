@@ -161,6 +161,18 @@ func (c *Client) ApplicationList(ctx context.Context, apiKey string, query url.V
 	return c.JSON(ctx, apiKey, http.MethodGet, "/v1/applications", query, nil)
 }
 
+func (c *Client) ApplicationCreate(ctx context.Context, apiKey string, body any) (any, error) {
+	return c.JSON(ctx, apiKey, http.MethodPost, "/v1/applications", nil, body)
+}
+
 func (c *Client) ApplicationListIdentities(ctx context.Context, apiKey, applicationID string, query url.Values) (any, error) {
 	return c.JSON(ctx, apiKey, http.MethodGet, "/v1/applications/"+url.PathEscape(applicationID)+"/identities", query, nil)
+}
+
+func (c *Client) ApplicationListAuthFlows(ctx context.Context, apiKey, applicationID string) (any, error) {
+	return c.JSON(ctx, apiKey, http.MethodGet, "/v1/applications/"+url.PathEscape(applicationID)+"/auth-flows", nil, nil)
+}
+
+func (c *Client) ApplicationCreateToken(ctx context.Context, apiKey, applicationID string, body any) (any, error) {
+	return c.JSON(ctx, apiKey, http.MethodPost, "/v1/applications/"+url.PathEscape(applicationID)+"/tokens", nil, body)
 }
