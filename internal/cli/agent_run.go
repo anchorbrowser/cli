@@ -16,14 +16,14 @@ func newAgentRunCommand(app *App) *cobra.Command {
 	var secrets []string
 
 	cmd := &cobra.Command{
-		Use:   "run-agent [session-id]",
+		Use:   "run-agent",
 		Short: "Run an autonomous web task",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if strings.TrimSpace(prompt) == "" {
 				return fmt.Errorf("--prompt is required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}

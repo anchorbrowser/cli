@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -30,7 +31,7 @@ func newAuthLoginCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Store an API key securely in your OS keychain",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := app.ensureAuthStore(); err != nil {
 				return err
 			}
@@ -41,15 +42,17 @@ func newAuthLoginCommand(app *App) *cobra.Command {
 				}
 				apiKey = secret
 			}
+			validationQuery := url.Values{}
+			validationQuery.Set("page", "1")
+			validationQuery.Set("limit", "1")
+			if _, err := app.newAPIClient().SessionList(cmd.Context(), apiKey, validationQuery); err != nil {
+				return fmt.Errorf("api key validation failed: %w", err)
+			}
 			if err := app.Auth.Login(name, apiKey); err != nil {
 				return err
 			}
-			return app.printValue(map[string]any{
-				"status":       "ok",
-				"active_key":   normalizeAuthName(name),
-				"storage":      "os_keychain",
-				"env_fallback": auth.EnvVarName,
-			})
+			_, err := fmt.Fprintln(app.Stdout, "Logged in successfully.")
+			return err
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "default", "Name to assign this API key")

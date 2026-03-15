@@ -304,11 +304,11 @@ func newSessionListCommand(app *App) *cobra.Command {
 
 func newSessionGetCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get [session-id]",
+		Use:   "get",
 		Short: "Get a session",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -325,11 +325,11 @@ func newSessionGetCommand(app *App) *cobra.Command {
 
 func newSessionEndCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "end [session-id]",
+		Use:   "end",
 		Short: "End a session",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -362,11 +362,11 @@ func newSessionEndAllCommand(app *App) *cobra.Command {
 
 func newSessionPagesCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "pages [session-id]",
+		Use:   "pages",
 		Short: "List open pages for a session",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -490,11 +490,11 @@ func newSessionStatusAllCommand(app *App) *cobra.Command {
 
 func newSessionDownloadsCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "downloads [session-id]",
+		Use:   "downloads",
 		Short: "List files downloaded during a session",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -511,11 +511,11 @@ func newSessionDownloadsCommand(app *App) *cobra.Command {
 
 func newSessionRecordingsCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "recordings [session-id]",
+		Use:   "recordings",
 		Short: "List session recordings",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -538,11 +538,11 @@ func newSessionRecordingFetchPrimaryCommand(app *App) *cobra.Command {
 	}
 
 	fetchCmd := &cobra.Command{
-		Use:   "fetch-primary [session-id]",
+		Use:   "fetch-primary",
 		Short: "Download primary recording file",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -569,11 +569,11 @@ func newSessionRecordingFetchPrimaryCommand(app *App) *cobra.Command {
 func newSessionScreenshotCommand(app *App) *cobra.Command {
 	var outPath string
 	cmd := &cobra.Command{
-		Use:   "screenshot [session-id]",
+		Use:   "screenshot",
 		Short: "Capture session screenshot",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -601,10 +601,10 @@ func newSessionClickCommand(app *App) *cobra.Command {
 	var selector, button string
 	var timeout, index int
 	cmd := &cobra.Command{
-		Use:   "click [session-id]",
+		Use:   "click",
 		Short: "Click in session (coordinates or selector)",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			selectorSet := cmd.Flags().Changed("selector")
 			xySet := cmd.Flags().Changed("x") || cmd.Flags().Changed("y")
 			if selectorSet == xySet {
@@ -613,7 +613,7 @@ func newSessionClickCommand(app *App) *cobra.Command {
 			if xySet && !(cmd.Flags().Changed("x") && cmd.Flags().Changed("y")) {
 				return fmt.Errorf("both --x and --y are required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -674,14 +674,14 @@ func newPointWithButtonCommand(app *App, use, short string, call func(cmd *cobra
 	var x, y int
 	var button string
 	cmd := &cobra.Command{
-		Use:   use + " [session-id]",
+		Use:   use,
 		Short: short,
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("x") || !cmd.Flags().Changed("y") {
 				return fmt.Errorf("both --x and --y are required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -706,14 +706,14 @@ func newPointWithButtonCommand(app *App, use, short string, call func(cmd *cobra
 func newSessionMoveCommand(app *App) *cobra.Command {
 	var x, y int
 	cmd := &cobra.Command{
-		Use:   "move [session-id]",
+		Use:   "move",
 		Short: "Move mouse cursor",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("x") || !cmd.Flags().Changed("y") {
 				return fmt.Errorf("both --x and --y are required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -734,14 +734,14 @@ func newSessionDragDropCommand(app *App) *cobra.Command {
 	var startX, startY, endX, endY int
 	var button string
 	cmd := &cobra.Command{
-		Use:   "drag-drop [session-id]",
+		Use:   "drag-drop",
 		Short: "Drag and drop from start to end coordinates",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("start-x") || !cmd.Flags().Changed("start-y") || !cmd.Flags().Changed("end-x") || !cmd.Flags().Changed("end-y") {
 				return fmt.Errorf("--start-x, --start-y, --end-x, --end-y are required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -769,14 +769,14 @@ func newSessionScrollCommand(app *App) *cobra.Command {
 	var x, y, deltaX, deltaY, steps int
 	var useOS bool
 	cmd := &cobra.Command{
-		Use:   "scroll [session-id]",
+		Use:   "scroll",
 		Short: "Scroll in session",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("x") || !cmd.Flags().Changed("y") || !cmd.Flags().Changed("delta-y") {
 				return fmt.Errorf("--x, --y and --delta-y are required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -811,14 +811,14 @@ func newSessionTypeCommand(app *App) *cobra.Command {
 	var text string
 	var delay int
 	cmd := &cobra.Command{
-		Use:   "type [session-id]",
+		Use:   "type",
 		Short: "Type text",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("text") {
 				return fmt.Errorf("--text is required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -843,14 +843,14 @@ func newSessionShortcutCommand(app *App) *cobra.Command {
 	var keys []string
 	var holdTime int
 	cmd := &cobra.Command{
-		Use:   "shortcut [session-id]",
+		Use:   "shortcut",
 		Short: "Press keyboard shortcut",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if len(keys) == 0 {
 				return fmt.Errorf("--keys is required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -875,11 +875,11 @@ func newSessionClipboardCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{Use: "clipboard", Short: "Clipboard operations"}
 
 	getCmd := &cobra.Command{
-		Use:   "get [session-id]",
+		Use:   "get",
 		Short: "Get clipboard contents",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -894,14 +894,14 @@ func newSessionClipboardCommand(app *App) *cobra.Command {
 
 	var text string
 	setCmd := &cobra.Command{
-		Use:   "set [session-id]",
+		Use:   "set",
 		Short: "Set clipboard text",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("text") {
 				return fmt.Errorf("--text is required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -921,11 +921,11 @@ func newSessionClipboardCommand(app *App) *cobra.Command {
 
 func newSessionCopyCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "copy [session-id]",
+		Use:   "copy",
 		Short: "Copy selected text to clipboard",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, err := app.resolveSessionID(cmd, args)
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -942,14 +942,14 @@ func newSessionCopyCommand(app *App) *cobra.Command {
 func newSessionPasteCommand(app *App) *cobra.Command {
 	var text string
 	cmd := &cobra.Command{
-		Use:   "paste [session-id]",
+		Use:   "paste",
 		Short: "Paste text at cursor",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("text") {
 				return fmt.Errorf("--text is required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -968,14 +968,14 @@ func newSessionPasteCommand(app *App) *cobra.Command {
 func newSessionGotoCommand(app *App) *cobra.Command {
 	var targetURL string
 	cmd := &cobra.Command{
-		Use:   "goto [session-id]",
+		Use:   "goto",
 		Short: "Navigate to URL",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("url") {
 				return fmt.Errorf("--url is required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}
@@ -994,14 +994,14 @@ func newSessionGotoCommand(app *App) *cobra.Command {
 func newSessionUploadCommand(app *App) *cobra.Command {
 	var filePath string
 	cmd := &cobra.Command{
-		Use:   "upload [session-id]",
+		Use:   "upload",
 		Short: "Upload a file to session",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !cmd.Flags().Changed("file") {
 				return fmt.Errorf("--file is required")
 			}
-			sessionID, err := app.resolveSessionID(cmd, args)
+			sessionID, err := app.resolveSessionID(cmd)
 			if err != nil {
 				return err
 			}

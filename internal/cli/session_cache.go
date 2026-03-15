@@ -20,28 +20,17 @@ func (a *App) cacheSessionID(sessionID string) error {
 	return a.Config.Save(cfg)
 }
 
-func (a *App) resolveSessionID(cmd *cobra.Command, args []string) (string, error) {
+func (a *App) resolveSessionID(cmd *cobra.Command) (string, error) {
 	flagSessionID, _ := cmd.Flags().GetString("session-id")
 	flagSessionID = strings.TrimSpace(flagSessionID)
-
-	var argSessionID string
-	if len(args) > 0 {
-		argSessionID = strings.TrimSpace(args[0])
-	}
-
-	if argSessionID != "" && flagSessionID != "" && argSessionID != flagSessionID {
-		return "", fmt.Errorf("session ID specified twice with different values (arg=%q, --session-id=%q)", argSessionID, flagSessionID)
-	}
-	if argSessionID != "" {
-		return argSessionID, nil
-	}
 	if flagSessionID != "" {
+		a.printSessionTarget(flagSessionID, "flag")
 		return flagSessionID, nil
 	}
 
 	noCache, _ := cmd.Flags().GetBool("no-cache")
 	if noCache {
-		return "", fmt.Errorf("session ID required when --no-cache is set")
+		return "", fmt.Errorf("session ID required when --no-cache is set (pass --session-id)")
 	}
 
 	cfg, err := a.Config.Load()
@@ -50,9 +39,21 @@ func (a *App) resolveSessionID(cmd *cobra.Command, args []string) (string, error
 	}
 	cached := strings.TrimSpace(cfg.LastSessionID)
 	if cached == "" {
-		return "", fmt.Errorf("session ID required (pass <session-id>, --session-id, or create a session first)")
+		return "", fmt.Errorf("session ID required (pass --session-id, or create a session first)")
 	}
+	a.printSessionTarget(cached, "cached")
 	return cached, nil
+}
+
+func (a *App) printSessionTarget(sessionID, source string) {
+	if a == nil || a.Stderr == nil || strings.TrimSpace(sessionID) == "" {
+		return
+	}
+	if source == "cached" {
+		fmt.Fprintf(a.Stderr, "Using session: %s (cached latest)\n", sessionID)
+		return
+	}
+	fmt.Fprintf(a.Stderr, "Using session: %s\n", sessionID)
 }
 
 func extractSessionIDFromResponse(v any) string {
