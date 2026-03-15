@@ -621,10 +621,6 @@ func (m *sessionCreateWizardModel) handleSelectedValue(selected string) tea.Cmd 
 		m.completed = append(m.completed, fmt.Sprintf("Recommended anti-bot bundle: %s", yesNoLabel(useRecommended)))
 		attachInteractiveSummary(m.payload, m.completed)
 		m.step = wizardStepDone
-		m.mode = wizardModeLoading
-		m.title = "Creating session"
-		m.hint = ""
-		m.notice = "Preparing session creation payload..."
 		m.done = true
 		return tea.Quit
 	}
