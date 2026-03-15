@@ -45,6 +45,7 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 	}
 
 	global := &GlobalOptions{}
+	var showVersion bool
 	app := &App{
 		Version: version,
 		Global:  global,
@@ -58,15 +59,21 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 		Short:         "AnchorBrowser CLI",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Version:       version,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if err := output.ValidateFormat(global.Output); err != nil {
 				return err
 			}
 			return nil
 		},
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if showVersion {
+				return app.printVersionInfo(cmd.Context())
+			}
+			return cmd.Help()
+		},
 	}
 
+	cmd.PersistentFlags().BoolVar(&showVersion, "version", false, "Print version information")
 	cmd.PersistentFlags().StringVar(&global.APIKey, "api-key", "", "API key value (highest precedence)")
 	cmd.PersistentFlags().StringVar(&global.KeyName, "key", "", "Named API key profile to use")
 	cmd.PersistentFlags().StringVar(&global.BaseURL, "base-url", "https://api.anchorbrowser.io", "API base URL")
@@ -81,6 +88,7 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 	cmd.AddCommand(newTaskCommand(app))
 	cmd.AddCommand(newIdentityCommand(app))
 	cmd.AddCommand(newCreateAliasCommand(app))
+	cmd.AddCommand(newVersionCommand(app))
 
 	return cmd, nil
 }
