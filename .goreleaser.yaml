@@ -46,6 +46,7 @@ brews:
     license: MIT
     install: |
       bin.install "anchorbrowser"
+      generate_completions_from_executable(bin/"anchorbrowser", "completion")
     test: |
       system "#{bin}/anchorbrowser", "version"
 

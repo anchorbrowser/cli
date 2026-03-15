@@ -11,6 +11,8 @@ brew tap anchorbrowser/homebrew-tap
 brew install anchorbrowser
 ```
 
+Shell completions are installed automatically for bash/zsh/fish with Homebrew.
+
 ### npm
 
 ```bash
