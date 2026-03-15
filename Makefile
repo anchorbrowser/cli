@@ -1,4 +1,4 @@
-SHELL := /bin/zsh
+SHELL := /usr/bin/env bash
 
 APP := anchorbrowser
 PKG := ./...
