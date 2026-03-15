@@ -37,10 +37,7 @@ type Store struct {
 }
 
 func NewStore(cfgManager *config.Manager) (*Store, error) {
-	ring, err := keyring.Open(keyring.Config{
-		ServiceName:     ServiceName,
-		AllowedBackends: allowedBackends(),
-	})
+	ring, err := openKeyring(ServiceName, allowedBackends())
 	if err != nil {
 		return nil, fmt.Errorf("open secure keychain failed: %w. in headless environments, use %s", err, EnvVarName)
 	}
