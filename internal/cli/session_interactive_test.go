@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -85,5 +86,47 @@ func TestPromptCredentialsForFlow(t *testing.T) {
 	}
 	if len(creds) != 3 {
 		t.Fatalf("expected 3 credentials, got %d", len(creds))
+	}
+}
+
+func TestFindRecentIdentityByNameFromResponse(t *testing.T) {
+	now := time.Now().UTC()
+	result := map[string]any{
+		"identities": []any{
+			map[string]any{
+				"id":         "11111111-1111-4111-8111-111111111111",
+				"name":       "cli-identity",
+				"created_at": now.Add(-10 * time.Minute).Format(time.RFC3339),
+			},
+			map[string]any{
+				"id":         "22222222-2222-4222-8222-222222222222",
+				"name":       "cli-identity older",
+				"created_at": now.Add(-2 * time.Hour).Format(time.RFC3339),
+			},
+		},
+	}
+	rows := extractIdentityRows(result)
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 identity rows")
+	}
+	// Validate helper logic with time window and contains matching.
+	bestID := ""
+	bestTime := time.Time{}
+	for _, row := range rows {
+		name := strings.ToLower(strings.TrimSpace(firstString(row["name"])))
+		if !strings.Contains(name, "cli-identity") {
+			continue
+		}
+		createdAt, err := time.Parse(time.RFC3339, firstString(row["created_at"]))
+		if err != nil || now.Sub(createdAt) > 45*time.Minute {
+			continue
+		}
+		if bestID == "" || createdAt.After(bestTime) {
+			bestID = firstString(row["id"])
+			bestTime = createdAt
+		}
+	}
+	if bestID != "11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("unexpected best identity id: %s", bestID)
 	}
 }

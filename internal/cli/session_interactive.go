@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -87,6 +88,11 @@ func runInteractiveSessionCreate(cmd *cobra.Command, app *App, apiKey string) (m
 	}
 	if useRecommended {
 		applyRecommendedAntiBotPayload(payload)
+	}
+	if authenticated {
+		_, _ = fmt.Fprintln(app.Stderr, "Creating an authenticated session...")
+	} else {
+		_, _ = fmt.Fprintln(app.Stderr, "Creating a session...")
 	}
 
 	return payload, nil
@@ -309,6 +315,14 @@ func interactiveCreateIdentityManual(ctx context.Context, reader *bufio.Reader, 
 	if openErr := openBrowserURL(manualURL); openErr != nil {
 		_, _ = fmt.Fprintf(out, "Could not open browser automatically: %v\n", openErr)
 	}
+	_, _ = promptText(reader, out, "Press Enter after you finish manual identity creation in the browser...")
+
+	if strings.TrimSpace(userName) != "" {
+		if identityID, lookupErr := findRecentIdentityByName(ctx, client, apiKey, applicationID, userName, 45*time.Minute); lookupErr == nil && identityID != "" {
+			_, _ = fmt.Fprintf(out, "Found newly created identity by name: %s\n", identityID)
+			return identityID, nil
+		}
+	}
 
 	for {
 		identityID, promptErr := promptRequired(reader, out, "Paste created identity ID: ")
@@ -321,6 +335,48 @@ func interactiveCreateIdentityManual(ctx context.Context, reader *bufio.Reader, 
 		}
 		return identityID, nil
 	}
+}
+
+func findRecentIdentityByName(ctx context.Context, client *api.Client, apiKey, applicationID, name string, window time.Duration) (string, error) {
+	query := make(neturl.Values)
+	query.Set("search", name)
+	res, err := client.ApplicationListIdentities(ctx, apiKey, applicationID, query)
+	if err != nil {
+		return "", err
+	}
+	rows := extractIdentityRows(res)
+	if len(rows) == 0 {
+		return "", nil
+	}
+
+	needle := strings.ToLower(strings.TrimSpace(name))
+	now := time.Now()
+	bestID := ""
+	var bestTime time.Time
+
+	for _, row := range rows {
+		rowName := strings.ToLower(strings.TrimSpace(firstString(row["name"])))
+		if rowName == "" || !strings.Contains(rowName, needle) {
+			continue
+		}
+		id := firstString(row["id"])
+		if id == "" {
+			continue
+		}
+		createdAtRaw := firstString(row["created_at"])
+		createdAt, parseErr := time.Parse(time.RFC3339, createdAtRaw)
+		if parseErr != nil {
+			continue
+		}
+		if now.Sub(createdAt) > window {
+			continue
+		}
+		if bestID == "" || createdAt.After(bestTime) {
+			bestID = id
+			bestTime = createdAt
+		}
+	}
+	return bestID, nil
 }
 
 func promptCredentialsForFlow(reader *bufio.Reader, out io.Writer, flow interactiveAuthFlow) ([]any, string, error) {
