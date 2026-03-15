@@ -156,3 +156,11 @@ func (c *Client) IdentityDelete(ctx context.Context, apiKey, identityID string) 
 func (c *Client) IdentityCredentials(ctx context.Context, apiKey, identityID string) (any, error) {
 	return c.JSON(ctx, apiKey, http.MethodGet, "/v1/identities/"+url.PathEscape(identityID)+"/credentials", nil, nil)
 }
+
+func (c *Client) ApplicationList(ctx context.Context, apiKey string, query url.Values) (any, error) {
+	return c.JSON(ctx, apiKey, http.MethodGet, "/v1/applications", query, nil)
+}
+
+func (c *Client) ApplicationListIdentities(ctx context.Context, apiKey, applicationID string, query url.Values) (any, error) {
+	return c.JSON(ctx, apiKey, http.MethodGet, "/v1/applications/"+url.PathEscape(applicationID)+"/identities", query, nil)
+}

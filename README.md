@@ -121,6 +121,7 @@ anchorbrowser task status <run-id>
 ### Identities
 
 ```bash
+anchorbrowser identity list --application-url https://example.com
 anchorbrowser identity create --source https://example.com/login --username user@example.com --password secret
 anchorbrowser identity get <identity-id>
 anchorbrowser identity update <identity-id> --name "Updated name"

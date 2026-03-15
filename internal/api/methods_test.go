@@ -67,6 +67,34 @@ func TestIdentityCredentialsMapping(t *testing.T) {
 	}, http.MethodGet, "/v1/identities/ident-1/credentials", func(_ *http.Request, _ map[string]any) {})
 }
 
+func TestApplicationListMapping(t *testing.T) {
+	testMethodPathBody(t, func(c *Client, ctx context.Context) (any, error) {
+		q := url.Values{}
+		q.Set("search", "netsweet.co")
+		return c.ApplicationList(ctx, "k", q)
+	}, http.MethodGet, "/v1/applications", func(r *http.Request, _ map[string]any) {
+		if got := r.URL.Query().Get("search"); got != "netsweet.co" {
+			t.Fatalf("unexpected search query: %s", got)
+		}
+	})
+}
+
+func TestApplicationListIdentitiesMapping(t *testing.T) {
+	testMethodPathBody(t, func(c *Client, ctx context.Context) (any, error) {
+		q := url.Values{}
+		q.Set("page", "2")
+		q.Set("limit", "10")
+		return c.ApplicationListIdentities(ctx, "k", "app-1", q)
+	}, http.MethodGet, "/v1/applications/app-1/identities", func(r *http.Request, _ map[string]any) {
+		if got := r.URL.Query().Get("page"); got != "2" {
+			t.Fatalf("unexpected page query: %s", got)
+		}
+		if got := r.URL.Query().Get("limit"); got != "10" {
+			t.Fatalf("unexpected limit query: %s", got)
+		}
+	})
+}
+
 func testMethodPathBody(t *testing.T, run func(c *Client, ctx context.Context) (any, error), wantMethod, wantPath string, assertFn func(r *http.Request, body map[string]any)) {
 	t.Helper()
 

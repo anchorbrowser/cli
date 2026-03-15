@@ -1,19 +1,93 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	neturl "net/url"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/anchorbrowser/cli/internal/api"
 )
 
 func newIdentityCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{Use: "identity", Short: "Manage identities"}
 	cmd.AddCommand(newIdentityCreateCommand(app))
+	cmd.AddCommand(newIdentityListCommand(app))
 	cmd.AddCommand(newIdentityGetCommand(app))
 	cmd.AddCommand(newIdentityUpdateCommand(app))
 	cmd.AddCommand(newIdentityDeleteCommand(app))
 	cmd.AddCommand(newIdentityCredentialsCommand(app))
+	return cmd
+}
+
+func newIdentityListCommand(app *App) *cobra.Command {
+	var applicationURL string
+	var search string
+	var page, limit int
+
+	cmd := &cobra.Command{
+		Use:   "list [application-url]",
+		Short: "List identities for an application URL",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			resolved, err := app.resolveAPIKey()
+			if err != nil {
+				return err
+			}
+			rawURL := strings.TrimSpace(applicationURL)
+			if len(args) > 0 {
+				if rawURL != "" && rawURL != args[0] {
+					return fmt.Errorf("application URL conflict: positional %q vs --application-url %q", args[0], rawURL)
+				}
+				rawURL = strings.TrimSpace(args[0])
+			}
+			if rawURL == "" {
+				return fmt.Errorf("application URL is required (pass as positional argument or --application-url)")
+			}
+
+			client := app.newAPIClient()
+			appID, applicationObj, err := resolveApplicationByURL(cmd.Context(), client, resolved.Value, rawURL)
+			if err != nil {
+				return err
+			}
+
+			query := make(neturl.Values)
+			if strings.TrimSpace(search) != "" {
+				query.Set("search", search)
+			}
+			if page > 0 {
+				query.Set("page", fmt.Sprintf("%d", page))
+			}
+			if limit > 0 {
+				query.Set("limit", fmt.Sprintf("%d", limit))
+			}
+
+			result, err := client.ApplicationListIdentities(cmd.Context(), resolved.Value, appID, query)
+			if err != nil {
+				return app.printDryRunOrValue(result, err)
+			}
+
+			out := map[string]any{
+				"application": applicationObj,
+			}
+			if m, ok := result.(map[string]any); ok {
+				for k, v := range m {
+					out[k] = v
+				}
+			} else {
+				out["result"] = result
+			}
+			return app.printValue(out)
+		},
+	}
+
+	cmd.Flags().StringVar(&applicationURL, "application-url", "", "Application URL used to resolve the application")
+	cmd.Flags().StringVar(&search, "search", "", "Search identities by name")
+	cmd.Flags().IntVar(&page, "page", 1, "Page number")
+	cmd.Flags().IntVar(&limit, "limit", 50, "Page size")
+
 	return cmd
 }
 
@@ -251,4 +325,114 @@ func buildCredentialsFromFlags(cmd *cobra.Command, username, password, authentic
 		credentials = append(credentials, map[string]any{"type": "custom", "fields": fields})
 	}
 	return credentials, nil
+}
+
+func resolveApplicationByURL(ctx context.Context, client *api.Client, apiKey, rawURL string) (string, map[string]any, error) {
+	normalizedInput, inputHost := normalizeURLForMatch(rawURL)
+	query := make(neturl.Values)
+	if inputHost != "" {
+		query.Set("search", inputHost)
+	}
+
+	raw, err := client.ApplicationList(ctx, apiKey, query)
+	if err != nil {
+		return "", nil, err
+	}
+	root, ok := raw.(map[string]any)
+	if !ok {
+		return "", nil, fmt.Errorf("unexpected application list response")
+	}
+	items, ok := root["applications"].([]any)
+	if !ok || len(items) == 0 {
+		return "", nil, fmt.Errorf("no applications found for %q", rawURL)
+	}
+
+	bestScore := -1
+	var best map[string]any
+	var bestID string
+	tied := 0
+
+	for _, item := range items {
+		appObj, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		appID := firstString(appObj["id"], appObj["applicationId"])
+		if appID == "" {
+			continue
+		}
+		source := firstString(appObj["source"], appObj["url"], appObj["applicationUrl"], appObj["loginUrl"])
+		score := scoreApplicationURLMatch(normalizedInput, inputHost, source)
+		if score > bestScore {
+			bestScore = score
+			best = appObj
+			bestID = appID
+			tied = 1
+			continue
+		}
+		if score == bestScore && score >= 2 {
+			tied++
+		}
+	}
+
+	if bestID == "" || bestScore <= 0 {
+		return "", nil, fmt.Errorf("could not resolve application for URL %q", rawURL)
+	}
+	if tied > 1 && bestScore >= 2 {
+		return "", nil, fmt.Errorf("multiple applications matched %q; please refine URL", rawURL)
+	}
+	return bestID, best, nil
+}
+
+func scoreApplicationURLMatch(normalizedInput, inputHost, candidate string) int {
+	if strings.TrimSpace(candidate) == "" {
+		return 0
+	}
+	normalizedCandidate, candidateHost := normalizeURLForMatch(candidate)
+	if normalizedInput != "" && normalizedCandidate == normalizedInput {
+		return 3
+	}
+	if inputHost != "" && candidateHost != "" && equivalentHost(inputHost, candidateHost) {
+		return 2
+	}
+	if normalizedInput != "" && strings.Contains(normalizedCandidate, normalizedInput) {
+		return 1
+	}
+	return 0
+}
+
+func normalizeURLForMatch(raw string) (string, string) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", ""
+	}
+	if !strings.Contains(value, "://") {
+		value = "https://" + value
+	}
+	u, err := neturl.Parse(value)
+	if err != nil {
+		return strings.ToLower(strings.TrimSuffix(strings.TrimSpace(raw), "/")), ""
+	}
+	host := strings.ToLower(u.Hostname())
+	path := strings.TrimSuffix(u.EscapedPath(), "/")
+	if path == "" {
+		path = "/"
+	}
+	return host + path, host
+}
+
+func equivalentHost(a, b string) bool {
+	trim := func(s string) string {
+		return strings.TrimPrefix(strings.ToLower(s), "www.")
+	}
+	return trim(a) == trim(b)
+}
+
+func firstString(vals ...any) string {
+	for _, v := range vals {
+		if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+			return strings.TrimSpace(s)
+		}
+	}
+	return ""
 }
