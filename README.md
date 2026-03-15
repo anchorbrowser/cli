@@ -1,2 +1,196 @@
-# cli
-Command-line interface for Anchor Browser, enabling developers to authenticate and manage cloud browser sessions and automation workflows from the terminal.
+# AnchorBrowser CLI
+
+Go-based CLI for AnchorBrowser sessions, agent tasks, tasks v2, and identities.
+
+## Install
+
+### Homebrew (recommended)
+
+```bash
+brew tap anchorbrowser/homebrew-tap
+brew install anchorbrowser
+```
+
+### npm
+
+```bash
+npm install -g @anchor-browser/cli
+anchorbrowser --help
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/anchorbrowser/cli.git
+cd cli
+make build
+./bin/anchorbrowser version
+```
+
+## Authentication
+
+The CLI supports API-key auth only.
+
+Credential precedence for every API command:
+
+1. `--api-key`
+2. `--key <name>`
+3. `ANCHORBROWSER_API_KEY`
+4. active key stored in OS keychain
+
+Store a key securely:
+
+```bash
+anchorbrowser auth login --name default
+```
+
+Manage keys:
+
+```bash
+anchorbrowser auth keys list
+anchorbrowser auth keys use default
+anchorbrowser auth keys rename default prod
+anchorbrowser auth keys remove prod
+anchorbrowser auth current
+```
+
+## Core commands
+
+### Sessions
+
+```bash
+anchorbrowser session create --initial-url https://example.com --tag prod
+anchorbrowser create session --body session.json
+
+anchorbrowser session list --page 1 --limit 20
+anchorbrowser session get <session-id>
+anchorbrowser session end <session-id>
+anchorbrowser session end-all
+anchorbrowser session pages <session-id>
+anchorbrowser session history --from-date 2026-01-01T00:00:00Z
+anchorbrowser session status-all --tags prod
+anchorbrowser session downloads <session-id>
+anchorbrowser session recordings <session-id>
+anchorbrowser session recording fetch-primary <session-id> --out recording.mp4
+```
+
+### Session controls (flat)
+
+```bash
+anchorbrowser session screenshot <session-id> --out shot.png
+anchorbrowser session click <session-id> --selector "button.submit"
+anchorbrowser session click <session-id> --x 120 --y 220 --button left
+anchorbrowser session double-click <session-id> --x 100 --y 100
+anchorbrowser session mouse-down <session-id> --x 100 --y 100
+anchorbrowser session mouse-up <session-id> --x 100 --y 100
+anchorbrowser session move <session-id> --x 200 --y 300
+anchorbrowser session drag-drop <session-id> --start-x 10 --start-y 10 --end-x 200 --end-y 200
+anchorbrowser session scroll <session-id> --x 100 --y 100 --delta-y 600
+anchorbrowser session type <session-id> --text "hello"
+anchorbrowser session shortcut <session-id> --keys ctrl,v
+anchorbrowser session clipboard get <session-id>
+anchorbrowser session clipboard set <session-id> --text "copied"
+anchorbrowser session copy <session-id>
+anchorbrowser session paste <session-id> --text "paste me"
+anchorbrowser session goto <session-id> --url https://anchorbrowser.io
+anchorbrowser session upload <session-id> --file ./document.pdf
+```
+
+### Agent run
+
+```bash
+anchorbrowser agent-run --prompt "extract the pricing table" --url https://example.com
+anchorbrowser agent-run --prompt "fill this form" --session-id <session-id> --async
+anchorbrowser agent-run status <workflow-id>
+```
+
+### Tasks v2
+
+```bash
+anchorbrowser task run <task-id> --input "File Name=invoice.pdf" --input "Operation=extract_text"
+anchorbrowser task status <run-id>
+```
+
+### Identities
+
+```bash
+anchorbrowser identity create --source https://example.com/login --username user@example.com --password secret
+anchorbrowser create identity --body identity.yaml
+anchorbrowser identity get <identity-id>
+anchorbrowser identity update <identity-id> --name "Updated name"
+anchorbrowser identity delete <identity-id>
+anchorbrowser identity credentials <identity-id>
+anchorbrowser identity credentials <identity-id> --reveal-secrets
+```
+
+## Global flags
+
+```text
+--api-key string
+--key string
+--base-url string
+--timeout duration
+--output json|yaml
+--compact
+--dry-run
+--verbose
+```
+
+JSON is default output.
+
+## Development
+
+```bash
+make generate
+make fmt
+make lint
+make test
+make test-race
+make vulncheck
+make build
+make release-check
+```
+
+## Release + Homebrew automation
+
+Tagging `v*` triggers GoReleaser (`.github/workflows/release.yml`) to:
+
+- build and publish binaries/checksums
+- create/update GitHub release in `anchorbrowser/cli`
+- commit formula updates to `anchorbrowser/homebrew-tap`
+- publish `@anchor-browser/cli` to npm
+
+Required repo secret in `anchorbrowser/cli`:
+
+- `HOMEBREW_TAP_GITHUB_TOKEN` (write access to `anchorbrowser/homebrew-tap`)
+- `NPM_TOKEN` (npm automation token with publish access for `@anchor-browser/cli`)
+
+## Version-driven releases
+
+When `package.json` version changes and is merged to `main`, workflow
+`.github/workflows/tag-release-from-package.yml` creates and pushes tag `v<version>`.
+That tag triggers the release workflow automatically.
+
+Example:
+
+1. Change `package.json` `"version"` from `0.1.0` to `0.2.0`
+2. Merge to `main`
+3. Workflow creates tag `v0.2.0`
+4. Release workflow publishes GitHub binaries, Homebrew update, and npm package
+
+## npm token setup notes
+
+For npm granular access tokens, ensure token permissions include:
+
+- packages and scopes: read and write
+- organization access: `Read and write` for `anchor-browser`
+
+If organization permission is `No access`, npm publish to `@anchor-browser/cli` will fail.
+
+## API references
+
+- [OpenAPI spec](https://docs.anchorbrowser.io/openapi.yaml)
+- [Start Browser Session](https://docs.anchorbrowser.io/api-reference/browser-sessions/start-browser-session)
+- [Perform Web Task](https://docs.anchorbrowser.io/api-reference/ai-tools/perform-web-task)
+- [Run a Task](https://docs.anchorbrowser.io/api-reference/tasks/run-a-task)
+- [Identities](https://docs.anchorbrowser.io/api-reference/identities)
