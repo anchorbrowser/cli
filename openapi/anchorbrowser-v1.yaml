@@ -1,0 +1,154 @@
+openapi: 3.0.3
+info:
+  title: AnchorBrowser CLI V1 API Subset
+  version: 1.0.0
+servers:
+  - url: https://api.anchorbrowser.io
+components:
+  schemas:
+    SessionCreateRequest:
+      type: object
+      properties:
+        session:
+          type: object
+          additionalProperties: true
+        browser:
+          type: object
+          additionalProperties: true
+        integrations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        identities:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+            required: [id]
+    PerformWebTaskRequest:
+      type: object
+      required: [prompt]
+      properties:
+        url:
+          type: string
+        prompt:
+          type: string
+        agent:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+        detect_elements:
+          type: boolean
+        human_intervention:
+          type: boolean
+        max_steps:
+          type: integer
+        secret_values:
+          type: object
+          additionalProperties:
+            type: string
+        highlight_elements:
+          type: boolean
+        output_schema:
+          type: object
+          additionalProperties: true
+        async:
+          type: boolean
+    RunTaskRequest:
+      type: object
+      required: [input_params]
+      properties:
+        input_params:
+          type: object
+          additionalProperties:
+            type: string
+        identity_id:
+          type: string
+        session_id:
+          type: string
+        cleanup_sessions:
+          type: boolean
+    CreateIdentityRequest:
+      type: object
+      required: [source, credentials]
+      properties:
+        name:
+          type: string
+        source:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        applicationName:
+          type: string
+        applicationDescription:
+          type: string
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/CredentialData'
+    UpdateIdentityRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/CredentialData'
+    CredentialData:
+      oneOf:
+        - $ref: '#/components/schemas/UsernamePasswordCredential'
+        - $ref: '#/components/schemas/AuthenticatorCredential'
+        - $ref: '#/components/schemas/CustomCredential'
+      discriminator:
+        propertyName: type
+    UsernamePasswordCredential:
+      type: object
+      required: [type, username, password]
+      properties:
+        type:
+          type: string
+          enum: [username_password]
+        username:
+          type: string
+        password:
+          type: string
+    AuthenticatorCredential:
+      type: object
+      required: [type, secret]
+      properties:
+        type:
+          type: string
+          enum: [authenticator]
+        secret:
+          type: string
+        otp:
+          type: string
+    CustomCredential:
+      type: object
+      required: [type, fields]
+      properties:
+        type:
+          type: string
+          enum: [custom]
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomFieldItem'
+    CustomFieldItem:
+      type: object
+      required: [name, value]
+      properties:
+        name:
+          type: string
+        value:
+          type: string

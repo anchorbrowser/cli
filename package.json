@@ -1,0 +1,33 @@
+{
+  "name": "@anchor-browser/cli",
+  "version": "0.1.0",
+  "description": "AnchorBrowser CLI",
+  "license": "MIT",
+  "homepage": "https://anchorbrowser.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anchorbrowser/cli.git"
+  },
+  "bin": {
+    "anchorbrowser": "npm/bin/anchorbrowser.js"
+  },
+  "files": [
+    "npm/bin",
+    "npm/lib",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node npm/lib/install.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "tar": "^7.4.3"
+  }
+}

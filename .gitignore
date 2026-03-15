@@ -7,6 +7,10 @@
 *.dll
 *.so
 *.dylib
+bin/
+dist/
+!npm/bin/
+!npm/bin/**
 
 # Test binary, built with `go test -c`
 *.test

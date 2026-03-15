@@ -1,0 +1,56 @@
+name: tag-release-from-package
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read versions
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+
+          if git show HEAD^:package.json >/tmp/prev-package.json 2>/dev/null; then
+            PREVIOUS_VERSION=$(jq -r '.version' /tmp/prev-package.json)
+          else
+            PREVIOUS_VERSION=""
+          fi
+
+          echo "current=${CURRENT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "previous=${PREVIOUS_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: steps.versions.outputs.current != '' && steps.versions.outputs.current != steps.versions.outputs.previous
+        env:
+          VERSION: ${{ steps.versions.outputs.current }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists. Skipping."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
