@@ -18,8 +18,9 @@ const (
 
 // FileConfig contains non-secret local CLI configuration.
 type FileConfig struct {
-	ActiveKey string             `mapstructure:"active_key" yaml:"active_key"`
-	Keys      map[string]KeyMeta `mapstructure:"keys" yaml:"keys"`
+	ActiveKey     string             `mapstructure:"active_key" yaml:"active_key"`
+	Keys          map[string]KeyMeta `mapstructure:"keys" yaml:"keys"`
+	LastSessionID string             `mapstructure:"last_session_id,omitempty" yaml:"last_session_id,omitempty"`
 }
 
 // KeyMeta holds metadata for a named key profile. API keys are stored in OS keychain only.

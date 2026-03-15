@@ -12,6 +12,8 @@ func newSessionCommand(app *App) *cobra.Command {
 		Use:   "session",
 		Short: "Manage browser sessions",
 	}
+	cmd.PersistentFlags().String("session-id", "", "Session ID to use when omitted from command args")
+	cmd.PersistentFlags().Bool("no-cache", false, "Do not use cached latest session ID when session ID is omitted")
 
 	cmd.AddCommand(newSessionCreateCommand(app))
 	cmd.AddCommand(newSessionListCommand(app))
@@ -39,6 +41,7 @@ func newSessionCommand(app *App) *cobra.Command {
 	cmd.AddCommand(newSessionPasteCommand(app))
 	cmd.AddCommand(newSessionGotoCommand(app))
 	cmd.AddCommand(newSessionUploadCommand(app))
+	cmd.AddCommand(newAgentRunCommand(app))
 
 	return cmd
 }
@@ -176,7 +179,16 @@ func newSessionCreateCommandWithUse(app *App, use, short string) *cobra.Command 
 
 			client := app.newAPIClient()
 			result, err := client.SessionCreate(cmd.Context(), resolved.Value, payload)
-			return app.printDryRunOrValue(result, err)
+			if err != nil {
+				return app.printDryRunOrValue(result, err)
+			}
+			noCache, _ := cmd.Flags().GetBool("no-cache")
+			if !noCache {
+				if cacheErr := app.cacheSessionID(extractSessionIDFromResponse(result)); cacheErr != nil {
+					return cacheErr
+				}
+			}
+			return app.printValue(result)
 		},
 	}
 
@@ -292,16 +304,20 @@ func newSessionListCommand(app *App) *cobra.Command {
 
 func newSessionGetCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <session-id>",
+		Use:   "get [session-id]",
 		Short: "Get a session",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
 			client := app.newAPIClient()
-			result, err := client.SessionGet(cmd.Context(), resolved.Value, args[0])
+			result, err := client.SessionGet(cmd.Context(), resolved.Value, sessionID)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -309,16 +325,20 @@ func newSessionGetCommand(app *App) *cobra.Command {
 
 func newSessionEndCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "end <session-id>",
+		Use:   "end [session-id]",
 		Short: "End a session",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
 			client := app.newAPIClient()
-			result, err := client.SessionEnd(cmd.Context(), resolved.Value, args[0])
+			result, err := client.SessionEnd(cmd.Context(), resolved.Value, sessionID)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -342,16 +362,20 @@ func newSessionEndAllCommand(app *App) *cobra.Command {
 
 func newSessionPagesCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "pages <session-id>",
+		Use:   "pages [session-id]",
 		Short: "List open pages for a session",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
 			client := app.newAPIClient()
-			result, err := client.SessionPages(cmd.Context(), resolved.Value, args[0])
+			result, err := client.SessionPages(cmd.Context(), resolved.Value, sessionID)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -466,16 +490,20 @@ func newSessionStatusAllCommand(app *App) *cobra.Command {
 
 func newSessionDownloadsCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "downloads <session-id>",
+		Use:   "downloads [session-id]",
 		Short: "List files downloaded during a session",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
 			client := app.newAPIClient()
-			result, err := client.SessionDownloads(cmd.Context(), resolved.Value, args[0])
+			result, err := client.SessionDownloads(cmd.Context(), resolved.Value, sessionID)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -483,16 +511,20 @@ func newSessionDownloadsCommand(app *App) *cobra.Command {
 
 func newSessionRecordingsCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "recordings <session-id>",
+		Use:   "recordings [session-id]",
 		Short: "List session recordings",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
 			client := app.newAPIClient()
-			result, err := client.SessionRecordings(cmd.Context(), resolved.Value, args[0])
+			result, err := client.SessionRecordings(cmd.Context(), resolved.Value, sessionID)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -506,16 +538,20 @@ func newSessionRecordingFetchPrimaryCommand(app *App) *cobra.Command {
 	}
 
 	fetchCmd := &cobra.Command{
-		Use:   "fetch-primary <session-id>",
+		Use:   "fetch-primary [session-id]",
 		Short: "Download primary recording file",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
 			client := app.newAPIClient()
-			data, err := client.SessionRecordingFetchPrimary(cmd.Context(), resolved.Value, args[0])
+			data, err := client.SessionRecordingFetchPrimary(cmd.Context(), resolved.Value, sessionID)
 			if err != nil {
 				if app.Global.DryRun {
 					return nil
@@ -533,16 +569,20 @@ func newSessionRecordingFetchPrimaryCommand(app *App) *cobra.Command {
 func newSessionScreenshotCommand(app *App) *cobra.Command {
 	var outPath string
 	cmd := &cobra.Command{
-		Use:   "screenshot <session-id>",
+		Use:   "screenshot [session-id]",
 		Short: "Capture session screenshot",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
 			client := app.newAPIClient()
-			data, err := client.SessionScreenshot(cmd.Context(), resolved.Value, args[0])
+			data, err := client.SessionScreenshot(cmd.Context(), resolved.Value, sessionID)
 			if err != nil {
 				if app.Global.DryRun {
 					return nil
@@ -561,9 +601,9 @@ func newSessionClickCommand(app *App) *cobra.Command {
 	var selector, button string
 	var timeout, index int
 	cmd := &cobra.Command{
-		Use:   "click <session-id>",
+		Use:   "click [session-id]",
 		Short: "Click in session (coordinates or selector)",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selectorSet := cmd.Flags().Changed("selector")
 			xySet := cmd.Flags().Changed("x") || cmd.Flags().Changed("y")
@@ -572,6 +612,10 @@ func newSessionClickCommand(app *App) *cobra.Command {
 			}
 			if xySet && !(cmd.Flags().Changed("x") && cmd.Flags().Changed("y")) {
 				return fmt.Errorf("both --x and --y are required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
@@ -595,7 +639,7 @@ func newSessionClickCommand(app *App) *cobra.Command {
 				body["index"] = index
 			}
 			client := app.newAPIClient()
-			result, err := client.SessionClick(cmd.Context(), resolved.Value, args[0], body)
+			result, err := client.SessionClick(cmd.Context(), resolved.Value, sessionID, body)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -630,12 +674,16 @@ func newPointWithButtonCommand(app *App, use, short string, call func(cmd *cobra
 	var x, y int
 	var button string
 	cmd := &cobra.Command{
-		Use:   use + " <session-id>",
+		Use:   use + " [session-id]",
 		Short: short,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("x") || !cmd.Flags().Changed("y") {
 				return fmt.Errorf("both --x and --y are required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
@@ -645,7 +693,7 @@ func newPointWithButtonCommand(app *App, use, short string, call func(cmd *cobra
 			if cmd.Flags().Changed("button") {
 				body["button"] = button
 			}
-			result, err := call(cmd, resolved.Value, args[0], body)
+			result, err := call(cmd, resolved.Value, sessionID, body)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -658,18 +706,22 @@ func newPointWithButtonCommand(app *App, use, short string, call func(cmd *cobra
 func newSessionMoveCommand(app *App) *cobra.Command {
 	var x, y int
 	cmd := &cobra.Command{
-		Use:   "move <session-id>",
+		Use:   "move [session-id]",
 		Short: "Move mouse cursor",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("x") || !cmd.Flags().Changed("y") {
 				return fmt.Errorf("both --x and --y are required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionMove(cmd.Context(), resolved.Value, args[0], map[string]any{"x": x, "y": y})
+			result, err := app.newAPIClient().SessionMove(cmd.Context(), resolved.Value, sessionID, map[string]any{"x": x, "y": y})
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -682,12 +734,16 @@ func newSessionDragDropCommand(app *App) *cobra.Command {
 	var startX, startY, endX, endY int
 	var button string
 	cmd := &cobra.Command{
-		Use:   "drag-drop <session-id>",
+		Use:   "drag-drop [session-id]",
 		Short: "Drag and drop from start to end coordinates",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("start-x") || !cmd.Flags().Changed("start-y") || !cmd.Flags().Changed("end-x") || !cmd.Flags().Changed("end-y") {
 				return fmt.Errorf("--start-x, --start-y, --end-x, --end-y are required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
@@ -697,7 +753,7 @@ func newSessionDragDropCommand(app *App) *cobra.Command {
 			if cmd.Flags().Changed("button") {
 				body["button"] = button
 			}
-			result, err := app.newAPIClient().SessionDragDrop(cmd.Context(), resolved.Value, args[0], body)
+			result, err := app.newAPIClient().SessionDragDrop(cmd.Context(), resolved.Value, sessionID, body)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -713,12 +769,16 @@ func newSessionScrollCommand(app *App) *cobra.Command {
 	var x, y, deltaX, deltaY, steps int
 	var useOS bool
 	cmd := &cobra.Command{
-		Use:   "scroll <session-id>",
+		Use:   "scroll [session-id]",
 		Short: "Scroll in session",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("x") || !cmd.Flags().Changed("y") || !cmd.Flags().Changed("delta-y") {
 				return fmt.Errorf("--x, --y and --delta-y are required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
@@ -734,7 +794,7 @@ func newSessionScrollCommand(app *App) *cobra.Command {
 			if cmd.Flags().Changed("use-os") {
 				body["useOs"] = useOS
 			}
-			result, err := app.newAPIClient().SessionScroll(cmd.Context(), resolved.Value, args[0], body)
+			result, err := app.newAPIClient().SessionScroll(cmd.Context(), resolved.Value, sessionID, body)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -751,12 +811,16 @@ func newSessionTypeCommand(app *App) *cobra.Command {
 	var text string
 	var delay int
 	cmd := &cobra.Command{
-		Use:   "type <session-id>",
+		Use:   "type [session-id]",
 		Short: "Type text",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("text") {
 				return fmt.Errorf("--text is required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
@@ -766,7 +830,7 @@ func newSessionTypeCommand(app *App) *cobra.Command {
 			if cmd.Flags().Changed("delay") {
 				body["delay"] = delay
 			}
-			result, err := app.newAPIClient().SessionType(cmd.Context(), resolved.Value, args[0], body)
+			result, err := app.newAPIClient().SessionType(cmd.Context(), resolved.Value, sessionID, body)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -779,12 +843,16 @@ func newSessionShortcutCommand(app *App) *cobra.Command {
 	var keys []string
 	var holdTime int
 	cmd := &cobra.Command{
-		Use:   "shortcut <session-id>",
+		Use:   "shortcut [session-id]",
 		Short: "Press keyboard shortcut",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(keys) == 0 {
 				return fmt.Errorf("--keys is required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
@@ -794,7 +862,7 @@ func newSessionShortcutCommand(app *App) *cobra.Command {
 			if cmd.Flags().Changed("hold-time") {
 				body["holdTime"] = holdTime
 			}
-			result, err := app.newAPIClient().SessionShortcut(cmd.Context(), resolved.Value, args[0], body)
+			result, err := app.newAPIClient().SessionShortcut(cmd.Context(), resolved.Value, sessionID, body)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -807,33 +875,41 @@ func newSessionClipboardCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{Use: "clipboard", Short: "Clipboard operations"}
 
 	getCmd := &cobra.Command{
-		Use:   "get <session-id>",
+		Use:   "get [session-id]",
 		Short: "Get clipboard contents",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionClipboardGet(cmd.Context(), resolved.Value, args[0])
+			result, err := app.newAPIClient().SessionClipboardGet(cmd.Context(), resolved.Value, sessionID)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
 
 	var text string
 	setCmd := &cobra.Command{
-		Use:   "set <session-id>",
+		Use:   "set [session-id]",
 		Short: "Set clipboard text",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("text") {
 				return fmt.Errorf("--text is required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionClipboardSet(cmd.Context(), resolved.Value, args[0], map[string]any{"text": text})
+			result, err := app.newAPIClient().SessionClipboardSet(cmd.Context(), resolved.Value, sessionID, map[string]any{"text": text})
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -845,15 +921,19 @@ func newSessionClipboardCommand(app *App) *cobra.Command {
 
 func newSessionCopyCommand(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "copy <session-id>",
+		Use:   "copy [session-id]",
 		Short: "Copy selected text to clipboard",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
+			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionCopy(cmd.Context(), resolved.Value, args[0])
+			result, err := app.newAPIClient().SessionCopy(cmd.Context(), resolved.Value, sessionID)
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -862,18 +942,22 @@ func newSessionCopyCommand(app *App) *cobra.Command {
 func newSessionPasteCommand(app *App) *cobra.Command {
 	var text string
 	cmd := &cobra.Command{
-		Use:   "paste <session-id>",
+		Use:   "paste [session-id]",
 		Short: "Paste text at cursor",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("text") {
 				return fmt.Errorf("--text is required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionPaste(cmd.Context(), resolved.Value, args[0], map[string]any{"text": text})
+			result, err := app.newAPIClient().SessionPaste(cmd.Context(), resolved.Value, sessionID, map[string]any{"text": text})
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -884,18 +968,22 @@ func newSessionPasteCommand(app *App) *cobra.Command {
 func newSessionGotoCommand(app *App) *cobra.Command {
 	var targetURL string
 	cmd := &cobra.Command{
-		Use:   "goto <session-id>",
+		Use:   "goto [session-id]",
 		Short: "Navigate to URL",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("url") {
 				return fmt.Errorf("--url is required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionGoto(cmd.Context(), resolved.Value, args[0], map[string]any{"url": targetURL})
+			result, err := app.newAPIClient().SessionGoto(cmd.Context(), resolved.Value, sessionID, map[string]any{"url": targetURL})
 			return app.printDryRunOrValue(result, err)
 		},
 	}
@@ -906,18 +994,22 @@ func newSessionGotoCommand(app *App) *cobra.Command {
 func newSessionUploadCommand(app *App) *cobra.Command {
 	var filePath string
 	cmd := &cobra.Command{
-		Use:   "upload <session-id>",
+		Use:   "upload [session-id]",
 		Short: "Upload a file to session",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flags().Changed("file") {
 				return fmt.Errorf("--file is required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
 				return err
 			}
-			result, err := app.newAPIClient().SessionUpload(cmd.Context(), resolved.Value, args[0], filePath)
+			result, err := app.newAPIClient().SessionUpload(cmd.Context(), resolved.Value, sessionID, filePath)
 			return app.printDryRunOrValue(result, err)
 		},
 	}

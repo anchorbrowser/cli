@@ -78,7 +78,6 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 
 	cmd.AddCommand(newAuthCommand(app))
 	cmd.AddCommand(newSessionCommand(app))
-	cmd.AddCommand(newAgentRunCommand(app))
 	cmd.AddCommand(newTaskCommand(app))
 	cmd.AddCommand(newIdentityCommand(app))
 	cmd.AddCommand(newCreateAliasCommand(app))

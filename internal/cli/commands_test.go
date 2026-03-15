@@ -34,3 +34,24 @@ func TestTaskRunRequiresInput(t *testing.T) {
 		t.Fatalf("expected error when no task input is provided")
 	}
 }
+
+func TestRunAgentIsUnderSession(t *testing.T) {
+	cmd, err := NewRootCommand("test")
+	if err != nil {
+		t.Fatalf("NewRootCommand: %v", err)
+	}
+
+	cmd.SetArgs([]string{"session", "run-agent", "--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected session run-agent command to exist: %v", err)
+	}
+
+	cmd, err = NewRootCommand("test")
+	if err != nil {
+		t.Fatalf("NewRootCommand: %v", err)
+	}
+	cmd.SetArgs([]string{"agent-run", "--help"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatalf("expected top-level agent-run to be unavailable")
+	}
+}

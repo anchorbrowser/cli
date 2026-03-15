@@ -10,17 +10,22 @@ import (
 )
 
 func newAgentRunCommand(app *App) *cobra.Command {
-	var prompt, targetURL, sessionID, agent, provider, model, outputSchemaFlag string
+	var prompt, targetURL, agent, provider, model, outputSchemaFlag string
 	var maxSteps int
 	var detectElements, humanIntervention, highlightElements, async bool
 	var secrets []string
 
 	cmd := &cobra.Command{
-		Use:   "agent-run",
+		Use:   "run-agent [session-id]",
 		Short: "Run an autonomous web task",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(prompt) == "" {
 				return fmt.Errorf("--prompt is required")
+			}
+			sessionID, err := app.resolveSessionID(cmd, args)
+			if err != nil {
+				return err
 			}
 			resolved, err := app.resolveAPIKey()
 			if err != nil {
@@ -78,7 +83,6 @@ func newAgentRunCommand(app *App) *cobra.Command {
 
 	cmd.Flags().StringVar(&prompt, "prompt", "", "Task prompt")
 	cmd.Flags().StringVar(&targetURL, "url", "", "URL to start from")
-	cmd.Flags().StringVar(&sessionID, "session-id", "", "Existing session ID to run inside")
 	cmd.Flags().StringVar(&agent, "agent", "", "Agent to use")
 	cmd.Flags().StringVar(&provider, "provider", "", "Model provider")
 	cmd.Flags().StringVar(&model, "model", "", "Model name")

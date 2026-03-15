@@ -63,45 +63,49 @@ anchorbrowser session create --initial-url https://example.com --tag prod
 anchorbrowser create session --body session.json
 
 anchorbrowser session list --page 1 --limit 20
-anchorbrowser session get <session-id>
-anchorbrowser session end <session-id>
+anchorbrowser session get [session-id]
+anchorbrowser session end [session-id]
 anchorbrowser session end-all
-anchorbrowser session pages <session-id>
+anchorbrowser session pages [session-id]
 anchorbrowser session history --from-date 2026-01-01T00:00:00Z
 anchorbrowser session status-all --tags prod
-anchorbrowser session downloads <session-id>
-anchorbrowser session recordings <session-id>
-anchorbrowser session recording fetch-primary <session-id> --out recording.mp4
+anchorbrowser session downloads [session-id]
+anchorbrowser session recordings [session-id]
+anchorbrowser session recording fetch-primary [session-id] --out recording.mp4
 ```
+
+`session create` caches the created session ID by default. Session actions use:
+`<session-id>` arg > `--session-id` flag > cached latest session.
+Set `--no-cache` to force explicit session selection.
 
 ### Session controls (flat)
 
 ```bash
-anchorbrowser session screenshot <session-id> --out shot.png
-anchorbrowser session click <session-id> --selector "button.submit"
-anchorbrowser session click <session-id> --x 120 --y 220 --button left
-anchorbrowser session double-click <session-id> --x 100 --y 100
-anchorbrowser session mouse-down <session-id> --x 100 --y 100
-anchorbrowser session mouse-up <session-id> --x 100 --y 100
-anchorbrowser session move <session-id> --x 200 --y 300
-anchorbrowser session drag-drop <session-id> --start-x 10 --start-y 10 --end-x 200 --end-y 200
-anchorbrowser session scroll <session-id> --x 100 --y 100 --delta-y 600
-anchorbrowser session type <session-id> --text "hello"
-anchorbrowser session shortcut <session-id> --keys ctrl,v
-anchorbrowser session clipboard get <session-id>
-anchorbrowser session clipboard set <session-id> --text "copied"
-anchorbrowser session copy <session-id>
-anchorbrowser session paste <session-id> --text "paste me"
-anchorbrowser session goto <session-id> --url https://anchorbrowser.io
-anchorbrowser session upload <session-id> --file ./document.pdf
+anchorbrowser session screenshot [session-id] --out shot.png
+anchorbrowser session click [session-id] --selector "button.submit"
+anchorbrowser session click [session-id] --x 120 --y 220 --button left
+anchorbrowser session double-click [session-id] --x 100 --y 100
+anchorbrowser session mouse-down [session-id] --x 100 --y 100
+anchorbrowser session mouse-up [session-id] --x 100 --y 100
+anchorbrowser session move [session-id] --x 200 --y 300
+anchorbrowser session drag-drop [session-id] --start-x 10 --start-y 10 --end-x 200 --end-y 200
+anchorbrowser session scroll [session-id] --x 100 --y 100 --delta-y 600
+anchorbrowser session type [session-id] --text "hello"
+anchorbrowser session shortcut [session-id] --keys ctrl,v
+anchorbrowser session clipboard get [session-id]
+anchorbrowser session clipboard set [session-id] --text "copied"
+anchorbrowser session copy [session-id]
+anchorbrowser session paste [session-id] --text "paste me"
+anchorbrowser session goto [session-id] --url https://anchorbrowser.io
+anchorbrowser session upload [session-id] --file ./document.pdf
 ```
 
 ### Agent run
 
 ```bash
-anchorbrowser agent-run --prompt "extract the pricing table" --url https://example.com
-anchorbrowser agent-run --prompt "fill this form" --session-id <session-id> --async
-anchorbrowser agent-run status <workflow-id>
+anchorbrowser session run-agent [session-id] --prompt "extract the pricing table" --url https://example.com
+anchorbrowser session run-agent --session-id <session-id> --prompt "fill this form" --async
+anchorbrowser session run-agent status <workflow-id>
 ```
 
 ### Tasks v2
