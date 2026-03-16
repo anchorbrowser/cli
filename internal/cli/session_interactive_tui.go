@@ -310,6 +310,9 @@ func (m *sessionCreateWizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *sessionCreateWizardModel) View() string {
+	if m.done {
+		return ""
+	}
 	body := m.renderBody()
 	return renderInteractiveFrame(m.title, m.completed, body, m.hint)
 }
