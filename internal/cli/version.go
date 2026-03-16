@@ -26,6 +26,8 @@ type latestReleaseResponse struct {
 	TagName string `json:"tag_name"`
 }
 
+var fetchLatestReleaseTagFn = fetchLatestReleaseTag
+
 func newVersionCommand(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
@@ -51,13 +53,16 @@ func (a *App) printVersionInfo(ctx context.Context) error {
 		return err
 	}
 
-	latest, err := fetchLatestReleaseTag(ctx)
+	latest, err := fetchLatestReleaseTagFn(ctx)
 	if err != nil {
 		_, _ = fmt.Fprintln(a.Stdout, "Update check: unavailable")
 		return nil
 	}
 	if semver.Compare(normalizeSemver(latest), currentSemver) > 0 {
-		_, err = fmt.Fprintf(a.Stdout, "Update available: %s (current %s)\n", latest, displayVersion)
+		if _, err = fmt.Fprintf(a.Stdout, "Update available: %s (current %s)\n", latest, displayVersion); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(a.Stdout, "Run `anchorbrowser update` to upgrade.")
 		return err
 	}
 	_, err = fmt.Fprintf(a.Stdout, "You are up to date (%s)\n", displayVersion)

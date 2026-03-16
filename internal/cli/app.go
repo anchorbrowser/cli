@@ -93,6 +93,7 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 	cmd.AddCommand(newTaskCommand(app))
 	cmd.AddCommand(newIdentityCommand(app))
 	cmd.AddCommand(newVersionCommand(app))
+	cmd.AddCommand(newUpdateCommand(app))
 	cmd.AddCommand(newInternalCompletionCommand())
 
 	return cmd, nil
