@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const https = require('node:https');
+const { spawnSync } = require('node:child_process');
 const { pipeline } = require('node:stream/promises');
 const { createWriteStream } = require('node:fs');
 const tar = require('tar');
@@ -71,12 +72,29 @@ async function main() {
     }
 
     console.log(`Installed ${binaryName}`);
+    console.log('Installing parity backend...');
+    installBackend(target);
   } catch (err) {
     console.error('Failed to install AnchorBrowser CLI binary:', err.message);
-    console.error('You can still use Homebrew or download binaries from GitHub releases.');
     process.exitCode = 1;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+function installBackend(binaryPath) {
+  const result = spawnSync(binaryPath, ['backend', 'install'], {
+    stdio: 'inherit',
+    env: process.env,
+  });
+  if (result.error) {
+    throw result.error;
+  }
+  if (typeof result.status === 'number' && result.status !== 0) {
+    throw new Error(`backend install failed with exit code ${result.status}`);
+  }
+  if (result.signal) {
+    throw new Error(`backend install terminated by signal ${result.signal}`);
   }
 }
 
