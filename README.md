@@ -1,6 +1,6 @@
 # AnchorBrowser CLI
 
-Go-based CLI for AnchorBrowser sessions, agent tasks, tasks v2, and identities.
+AnchorBrowser CLI with `agent-browser` parity UX, backed by AnchorBrowser sessions over CDP.
 
 ## Install
 
@@ -10,8 +10,6 @@ Go-based CLI for AnchorBrowser sessions, agent tasks, tasks v2, and identities.
 brew tap anchorbrowser/homebrew-tap
 brew install anchorbrowser
 ```
-
-Shell completions are installed automatically for bash/zsh/fish with Homebrew.
 
 ### npm
 
@@ -29,108 +27,112 @@ make build
 ./bin/anchorbrowser version
 ```
 
+## Command model
+
+Top-level commands are parity-first (`open`, `click`, `snapshot`, `fill`, `get`, `wait`, `screenshot`, etc.) and are executed through pinned `agent-browser` backend (`v0.20.13`).
+Root help (`anchorbrowser --help`) is runtime-sourced from the backend and white-labeled.
+
+Anchor API-specific commands are namespaced under `anchor`:
+
+```bash
+anchorbrowser anchor session ...
+anchorbrowser anchor identity ...
+anchorbrowser anchor task ...
+```
+
+Operational commands remain top-level:
+
+```bash
+anchorbrowser auth ...
+anchorbrowser backend ...
+anchorbrowser update
+anchorbrowser version
+```
+
+Breaking change:
+
+- old top-level `session`, `identity`, `task` commands moved under `anchor`.
+
 ## Authentication
 
-The CLI supports API-key auth only.
-
-Credential precedence for every API command:
+API key precedence:
 
 1. `--api-key`
 2. `--key <name>`
 3. `ANCHORBROWSER_API_KEY`
 4. active key stored in OS keychain
 
-Store a key securely:
-
 ```bash
 anchorbrowser auth login --name default
-```
-
-Manage keys:
-
-```bash
 anchorbrowser auth keys list
-anchorbrowser auth keys use default
-anchorbrowser auth keys rename default prod
-anchorbrowser auth keys remove prod
 anchorbrowser auth current
 ```
 
-## Core commands
+## Parity usage
 
-### Sessions
+Examples (mirroring `agent-browser` style):
 
 ```bash
-anchorbrowser session create --initial-url https://example.com --tag prod
-anchorbrowser session create --interactive
-
-anchorbrowser session list --page 1 --limit 20
-anchorbrowser session get
-anchorbrowser session end
-anchorbrowser session end-all
-anchorbrowser session pages
-anchorbrowser session history --from-date 2026-01-01T00:00:00Z
-anchorbrowser session status-all --tags prod
-anchorbrowser session downloads
-anchorbrowser session recordings
-anchorbrowser session recording fetch-primary --out recording.mp4
+anchorbrowser open https://example.com
+anchorbrowser snapshot -i
+anchorbrowser click @e1
+anchorbrowser fill @e2 "hello"
+anchorbrowser screenshot page.png
+anchorbrowser close
 ```
 
-`session create` caches the created session ID by default. Session actions use:
-`--session-id` flag > cached latest session.
-Set `--no-cache` to force explicit session selection.
-When a command targets a cached/selected session, the CLI prints `Using session: <id>`.
-Interactive mode (`--interactive`) is exclusive with create payload flags (`--body`, `--initial-url`, proxy/browser/profile flags, identities/integrations).
-In a real terminal, interactive mode uses keyboard-driven TUI selection (arrows + type-to-search). In non-TTY contexts, it falls back to plain prompts.
+Session bridge behavior for parity commands:
 
-### Session controls (flat)
+1. hidden `--session-id` if provided,
+2. cached latest session,
+3. otherwise auto-create a new session.
+
+Auto-created sessions enable recommended anti-bot defaults:
+
+- `session.proxy.active=true` with `type=anchor_proxy`
+- `browser.extra_stealth.active=true`
+- `browser.captcha_solver.active=true`
+
+For authenticated browsing, pre-create an authenticated Anchor session and then run parity commands:
 
 ```bash
-anchorbrowser session screenshot --out shot.png
-anchorbrowser session click --selector "button.submit"
-anchorbrowser session click --x 120 --y 220 --button left
-anchorbrowser session double-click --x 100 --y 100
-anchorbrowser session mouse-down --x 100 --y 100
-anchorbrowser session mouse-up --x 100 --y 100
-anchorbrowser session move --x 200 --y 300
-anchorbrowser session drag-drop --start-x 10 --start-y 10 --end-x 200 --end-y 200
-anchorbrowser session scroll --x 100 --y 100 --delta-y 600
-anchorbrowser session type --text "hello"
-anchorbrowser session shortcut --keys ctrl,v
-anchorbrowser session clipboard get
-anchorbrowser session clipboard set --text "copied"
-anchorbrowser session copy
-anchorbrowser session paste --text "paste me"
-anchorbrowser session goto https://anchorbrowser.io
-anchorbrowser session goto --url https://anchorbrowser.io
-anchorbrowser session upload --file ./document.pdf
+anchorbrowser anchor session create --interactive
+anchorbrowser open https://your-app.example
 ```
 
-### Agent run
+Power-user flags for parity commands (intentionally hidden):
+
+- `--session-id`
+- `--new-session`
+- `--no-cache`
+
+## Backend management
+
+Backend bootstrap is strict at install time:
+
+- Homebrew install runs `anchorbrowser backend install`
+- npm postinstall runs `anchorbrowser backend install`
+- install fails if backend bootstrap fails
+
+Runtime auto-install/self-heal still applies if users manually remove/corrupt backend binaries.
+
+Manual lifecycle commands:
 
 ```bash
-anchorbrowser session run-agent --prompt "extract the pricing table" --url https://example.com
-anchorbrowser session run-agent --session-id <session-id> --prompt "fill this form" --async
-anchorbrowser session run-agent status <workflow-id>
+anchorbrowser backend install
+anchorbrowser backend status
+anchorbrowser backend path
+anchorbrowser backend doctor
+anchorbrowser backend uninstall
 ```
 
-### Tasks v2
+## Anchor namespace commands
 
 ```bash
-anchorbrowser task run <task-id> --input "File Name=invoice.pdf" --input "Operation=extract_text"
-anchorbrowser task status <run-id>
-```
-
-### Identities
-
-```bash
-anchorbrowser identity list --application-url https://example.com
-anchorbrowser identity create --source https://example.com/login --username user@example.com --password secret
-anchorbrowser identity get <identity-id>
-anchorbrowser identity update <identity-id> --name "Updated name"
-anchorbrowser identity delete <identity-id>
-anchorbrowser identity credentials <identity-id>
-anchorbrowser identity credentials <identity-id> --reveal-secrets
+anchorbrowser anchor session create --interactive
+anchorbrowser anchor session list
+anchorbrowser anchor identity list --application-url https://example.com
+anchorbrowser anchor task run <task-id> --input "key=value"
 ```
 
 ## Global flags
@@ -145,8 +147,6 @@ anchorbrowser identity credentials <identity-id> --reveal-secrets
 --dry-run
 --verbose
 ```
-
-JSON is default output.
 
 ## Development
 
@@ -170,37 +170,13 @@ Tagging `v*` triggers GoReleaser (`.github/workflows/release.yml`) to:
 - commit formula updates to `anchorbrowser/homebrew-tap`
 - publish `@anchor-browser/cli` to npm
 
-Required repo secret in `anchorbrowser/cli`:
+Required repo secrets in `anchorbrowser/cli`:
 
-- `HOMEBREW_TAP_GITHUB_TOKEN` (write access to `anchorbrowser/homebrew-tap`)
-- `NPM_TOKEN` (npm automation token with publish access for `@anchor-browser/cli`)
+- `HOMEBREW_TAP_GITHUB_TOKEN`
+- `NPM_TOKEN`
 
 ## Version-driven releases
 
-When `package.json` version changes and is merged to `main`, workflow
+When `package.json` version changes and merges to `main`, workflow
 `.github/workflows/tag-release-from-package.yml` creates and pushes tag `v<version>`.
-That tag triggers the release workflow automatically.
-
-Example:
-
-1. Change `package.json` `"version"` from `0.1.0` to `0.2.0`
-2. Merge to `main`
-3. Workflow creates tag `v0.2.0`
-4. Release workflow publishes GitHub binaries, Homebrew update, and npm package
-
-## npm token setup notes
-
-For npm granular access tokens, ensure token permissions include:
-
-- packages and scopes: read and write
-- organization access: `Read and write` for `anchor-browser`
-
-If organization permission is `No access`, npm publish to `@anchor-browser/cli` will fail.
-
-## API references
-
-- [OpenAPI spec](https://docs.anchorbrowser.io/openapi.yaml)
-- [Start Browser Session](https://docs.anchorbrowser.io/api-reference/browser-sessions/start-browser-session)
-- [Perform Web Task](https://docs.anchorbrowser.io/api-reference/ai-tools/perform-web-task)
-- [Run a Task](https://docs.anchorbrowser.io/api-reference/tasks/run-a-task)
-- [Identities](https://docs.anchorbrowser.io/api-reference/identities)
+That tag triggers the release workflow.
