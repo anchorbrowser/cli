@@ -20,6 +20,18 @@ func (a *App) cacheSessionID(sessionID string) error {
 	return a.Config.Save(cfg)
 }
 
+func (a *App) clearSessionIDCache() error {
+	cfg, err := a.Config.Load()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(cfg.LastSessionID) == "" {
+		return nil
+	}
+	cfg.LastSessionID = ""
+	return a.Config.Save(cfg)
+}
+
 func (a *App) resolveSessionID(cmd *cobra.Command) (string, error) {
 	flagSessionID, _ := cmd.Flags().GetString("session-id")
 	flagSessionID = strings.TrimSpace(flagSessionID)
@@ -70,4 +82,20 @@ func extractSessionIDFromResponse(v any) string {
 		return ""
 	}
 	return strings.TrimSpace(id)
+}
+
+func extractSessionCDPURLFromResponse(v any) string {
+	root, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	data, ok := root["data"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	cdpURL, ok := data["cdp_url"].(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(cdpURL)
 }

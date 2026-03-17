@@ -10,12 +10,7 @@ import (
 var version = "dev"
 
 func main() {
-	rootCmd, err := cli.NewRootCommand(version)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if err := rootCmd.Execute(); err != nil {
+	if err := cli.Execute(version, os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

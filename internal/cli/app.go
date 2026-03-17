@@ -39,14 +39,17 @@ type App struct {
 	Stderr  io.Writer
 }
 
-func NewRootCommand(version string) (*cobra.Command, error) {
+func NewApp(version string) (*App, error) {
 	cfgManager, err := config.NewManager(config.DefaultAppName)
 	if err != nil {
 		return nil, err
 	}
 
-	global := &GlobalOptions{}
-	var showVersion bool
+	global := &GlobalOptions{
+		BaseURL: "https://api.anchorbrowser.io",
+		Timeout: 2 * time.Minute,
+		Output:  "json",
+	}
 	app := &App{
 		Version: version,
 		Global:  global,
@@ -55,17 +58,32 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 	}
+	return app, nil
+}
+
+func NewRootCommand(version string) (*cobra.Command, error) {
+	app, err := NewApp(version)
+	if err != nil {
+		return nil, err
+	}
+	return newRootCommand(app), nil
+}
+
+func newRootCommand(app *App) *cobra.Command {
+	var showVersion bool
 
 	cmd := &cobra.Command{
 		Use:           "anchorbrowser",
 		Short:         "AnchorBrowser CLI",
+		Long:          "AnchorBrowser CLI. Parity browser commands are available at top-level (for example: open, click, snapshot, fill, wait, screenshot). Anchor API commands are under `anchor`.",
+		Example:       "  anchorbrowser open https://example.com\n  anchorbrowser snapshot -i\n  anchorbrowser click @e1\n  anchorbrowser anchor session create --interactive",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			if err := output.ValidateFormat(global.Output); err != nil {
+			if err := output.ValidateFormat(app.Global.Output); err != nil {
 				return err
 			}
 			return nil
@@ -79,24 +97,23 @@ func NewRootCommand(version string) (*cobra.Command, error) {
 	}
 
 	cmd.PersistentFlags().BoolVar(&showVersion, "version", false, "Print version information")
-	cmd.PersistentFlags().StringVar(&global.APIKey, "api-key", "", "API key value (highest precedence)")
-	cmd.PersistentFlags().StringVar(&global.KeyName, "key", "", "Named API key profile to use")
-	cmd.PersistentFlags().StringVar(&global.BaseURL, "base-url", "https://api.anchorbrowser.io", "API base URL")
-	cmd.PersistentFlags().DurationVar(&global.Timeout, "timeout", 2*time.Minute, "HTTP request timeout")
-	cmd.PersistentFlags().StringVar(&global.Output, "output", "json", "Output format: json|yaml")
-	cmd.PersistentFlags().BoolVar(&global.Compact, "compact", false, "Compact output (json only)")
-	cmd.PersistentFlags().BoolVar(&global.DryRun, "dry-run", false, "Print request payloads without sending API calls")
-	cmd.PersistentFlags().BoolVar(&global.Verbose, "verbose", false, "Verbose request logging")
+	cmd.PersistentFlags().StringVar(&app.Global.APIKey, "api-key", "", "API key value (highest precedence)")
+	cmd.PersistentFlags().StringVar(&app.Global.KeyName, "key", "", "Named API key profile to use")
+	cmd.PersistentFlags().StringVar(&app.Global.BaseURL, "base-url", "https://api.anchorbrowser.io", "API base URL")
+	cmd.PersistentFlags().DurationVar(&app.Global.Timeout, "timeout", 2*time.Minute, "HTTP request timeout")
+	cmd.PersistentFlags().StringVar(&app.Global.Output, "output", "json", "Output format: json|yaml")
+	cmd.PersistentFlags().BoolVar(&app.Global.Compact, "compact", false, "Compact output (json only)")
+	cmd.PersistentFlags().BoolVar(&app.Global.DryRun, "dry-run", false, "Print request payloads without sending API calls")
+	cmd.PersistentFlags().BoolVar(&app.Global.Verbose, "verbose", false, "Verbose request logging")
 
 	cmd.AddCommand(newAuthCommand(app))
-	cmd.AddCommand(newSessionCommand(app))
-	cmd.AddCommand(newTaskCommand(app))
-	cmd.AddCommand(newIdentityCommand(app))
+	cmd.AddCommand(newAnchorCommand(app))
+	cmd.AddCommand(newBackendCommand(app))
 	cmd.AddCommand(newVersionCommand(app))
 	cmd.AddCommand(newUpdateCommand(app))
 	cmd.AddCommand(newInternalCompletionCommand())
 
-	return cmd, nil
+	return cmd
 }
 
 func (a *App) ensureAuthStore() error {
