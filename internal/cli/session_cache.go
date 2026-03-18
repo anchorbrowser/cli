@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -98,4 +99,43 @@ func extractSessionCDPURLFromResponse(v any) string {
 		return ""
 	}
 	return strings.TrimSpace(cdpURL)
+}
+
+func extractSessionPrimaryPageIDFromPagesResponse(v any) string {
+	root, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	data, ok := root["data"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	items, ok := data["items"].([]any)
+	if !ok {
+		return ""
+	}
+	for _, raw := range items {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		id, ok := item["id"].(string)
+		if !ok {
+			continue
+		}
+		id = strings.TrimSpace(id)
+		if id != "" {
+			return id
+		}
+	}
+	return ""
+}
+
+func buildSessionCDPURLFromPage(sessionID, pageID string) string {
+	sessionID = strings.TrimSpace(sessionID)
+	pageID = strings.TrimSpace(pageID)
+	if sessionID == "" || pageID == "" {
+		return ""
+	}
+	return fmt.Sprintf("wss://connect.anchorbrowser.io/devtools/page/%s?sessionId=%s", pageID, url.QueryEscape(sessionID))
 }

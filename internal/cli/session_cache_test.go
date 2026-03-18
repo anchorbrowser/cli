@@ -2,6 +2,7 @@ package cli
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -58,5 +59,33 @@ func TestResolveSessionIDNoCacheRequiresExplicitID(t *testing.T) {
 	}
 	if _, err := app.resolveSessionID(cmd); err == nil {
 		t.Fatalf("expected error when --no-cache is set without explicit session id")
+	}
+}
+
+func TestExtractSessionPrimaryPageIDFromPagesResponse(t *testing.T) {
+	resp := map[string]any{
+		"data": map[string]any{
+			"items": []any{
+				map[string]any{"id": "  "},
+				map[string]any{"id": "PAGE-123"},
+			},
+		},
+	}
+	if got := extractSessionPrimaryPageIDFromPagesResponse(resp); got != "PAGE-123" {
+		t.Fatalf("expected PAGE-123, got %q", got)
+	}
+}
+
+func TestBuildSessionCDPURLFromPage(t *testing.T) {
+	got := buildSessionCDPURLFromPage("sess-1", "PAGE-123")
+	wantPrefix := "wss://connect.anchorbrowser.io/devtools/page/PAGE-123?sessionId="
+	if !strings.HasPrefix(got, wantPrefix) {
+		t.Fatalf("expected prefix %q, got %q", wantPrefix, got)
+	}
+	if !strings.Contains(got, "sessionId=sess-1") {
+		t.Fatalf("expected escaped session id in URL, got %q", got)
+	}
+	if gotEmpty := buildSessionCDPURLFromPage("", "PAGE-123"); gotEmpty != "" {
+		t.Fatalf("expected empty URL for missing session id, got %q", gotEmpty)
 	}
 }

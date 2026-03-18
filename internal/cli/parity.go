@@ -357,9 +357,9 @@ func (a *App) fetchParitySession(ctx context.Context, apiKey, sessionID string) 
 	if err != nil {
 		return nil, err
 	}
-	cdpURL := extractSessionCDPURLFromResponse(result)
-	if strings.TrimSpace(cdpURL) == "" {
-		return nil, fmt.Errorf("session %s does not expose cdp_url", sessionID)
+	cdpURL, err := a.resolveParityCDPURL(ctx, apiKey, sessionID, extractSessionCDPURLFromResponse(result))
+	if err != nil {
+		return nil, err
 	}
 	return &paritySessionTarget{
 		ID:     sessionID,
@@ -385,15 +385,54 @@ func (a *App) createParitySession(ctx context.Context, apiKey string) (*paritySe
 		return nil, err
 	}
 	id := extractSessionIDFromResponse(result)
-	cdpURL := extractSessionCDPURLFromResponse(result)
-	if strings.TrimSpace(id) == "" || strings.TrimSpace(cdpURL) == "" {
-		return nil, fmt.Errorf("session create response missing id or cdp_url")
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("session create response missing id")
+	}
+	cdpURL, err := a.resolveParityCDPURL(ctx, apiKey, id, extractSessionCDPURLFromResponse(result))
+	if err != nil {
+		return nil, err
 	}
 	return &paritySessionTarget{
 		ID:      id,
 		CDPURL:  cdpURL,
 		Created: true,
 	}, nil
+}
+
+func (a *App) resolveParityCDPURL(ctx context.Context, apiKey, sessionID, fallback string) (string, error) {
+	const maxAttempts = 10
+	const backoff = 300 * time.Millisecond
+
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		pages, err := a.newAPIClient().SessionPages(ctx, apiKey, sessionID)
+		if err == nil {
+			if pageID := extractSessionPrimaryPageIDFromPagesResponse(pages); pageID != "" {
+				return buildSessionCDPURLFromPage(sessionID, pageID), nil
+			}
+			lastErr = fmt.Errorf("session %s pages response missing page id", sessionID)
+		} else {
+			lastErr = err
+		}
+
+		if attempt == maxAttempts-1 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+
+	fallback = strings.TrimSpace(fallback)
+	if fallback != "" {
+		return fallback, nil
+	}
+	if lastErr != nil {
+		return "", fmt.Errorf("resolve cdp url for session %s: %w", sessionID, lastErr)
+	}
+	return "", fmt.Errorf("session %s does not expose cdp_url", sessionID)
 }
 
 func (a *App) endParitySession(ctx context.Context, apiKey, sessionID string) error {
