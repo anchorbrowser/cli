@@ -10,13 +10,15 @@ import (
 )
 
 var reservedCommands = map[string]struct{}{
-	"auth":         {},
-	"update":       {},
-	"version":      {},
-	"backend":      {},
-	"anchor":       {},
-	"help":         {},
-	"__completion": {},
+	"auth":             {},
+	"update":           {},
+	"version":          {},
+	"backend":          {},
+	"anchor":           {},
+	"help":             {},
+	"__complete":       {},
+	"__completeNoDesc": {},
+	"__completion":     {},
 }
 
 var legacyTopLevelCommands = map[string]struct{}{

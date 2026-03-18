@@ -84,3 +84,30 @@ func TestReservedCommandDispatchesToCobra(t *testing.T) {
 		t.Fatalf("unexpected output: %s", out.String())
 	}
 }
+
+func TestCompletionProbeCommandsDispatchToCobra(t *testing.T) {
+	origRunParity := runParityCommandFn
+	defer func() {
+		runParityCommandFn = origRunParity
+	}()
+
+	runParityCalled := false
+	runParityCommandFn = func(_ *App, _ *parityParsedArgs) error {
+		runParityCalled = true
+		return nil
+	}
+
+	for _, args := range [][]string{
+		{"__complete", ""},
+		{"__completeNoDesc", ""},
+	} {
+		runParityCalled = false
+		var out, errOut bytes.Buffer
+		if err := executeWithIO("test", args, strings.NewReader(""), &out, &errOut); err != nil {
+			t.Fatalf("expected %q to execute through cobra: %v (stderr: %s)", args[0], err, errOut.String())
+		}
+		if runParityCalled {
+			t.Fatalf("expected %q to bypass parity dispatch", args[0])
+		}
+	}
+}
