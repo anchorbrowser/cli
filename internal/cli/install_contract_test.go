@@ -8,27 +8,27 @@ import (
 	"testing"
 )
 
-func TestNpmPostinstallRunsBackendInstall(t *testing.T) {
+func TestNpmPostinstallBootstrapsProxy(t *testing.T) {
 	root := repoRootFromTestFile(t)
 	data, err := os.ReadFile(filepath.Join(root, "npm", "lib", "install.js"))
 	if err != nil {
 		t.Fatalf("read npm install script: %v", err)
 	}
 	text := string(data)
-	if !strings.Contains(text, "backend', 'install'") && !strings.Contains(text, "\"backend\", \"install\"") {
-		t.Fatalf("expected npm postinstall script to invoke backend install")
+	if !strings.Contains(text, "proxy', '--help'") && !strings.Contains(text, "\"proxy\", \"--help\"") {
+		t.Fatalf("expected npm postinstall script to invoke proxy help bootstrap")
 	}
 }
 
-func TestGoreleaserBrewInstallRunsBackendInstall(t *testing.T) {
+func TestGoreleaserBrewInstallBootstrapsProxy(t *testing.T) {
 	root := repoRootFromTestFile(t)
 	data, err := os.ReadFile(filepath.Join(root, ".goreleaser.yaml"))
 	if err != nil {
 		t.Fatalf("read goreleaser config: %v", err)
 	}
 	text := string(data)
-	if !strings.Contains(text, `system "#{bin}/anchorbrowser", "backend", "install"`) {
-		t.Fatalf("expected goreleaser brew install stanza to run backend install")
+	if !strings.Contains(text, `system "#{bin}/anchorbrowser", "proxy", "--help"`) {
+		t.Fatalf("expected goreleaser brew install stanza to run proxy help bootstrap")
 	}
 }
 

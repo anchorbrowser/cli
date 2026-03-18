@@ -72,8 +72,8 @@ async function main() {
     }
 
     console.log(`Installed ${binaryName}`);
-    console.log('Installing parity backend...');
-    installBackend(target);
+    console.log('Bootstrapping proxy runtime...');
+    bootstrapProxy(target);
   } catch (err) {
     console.error('Failed to install AnchorBrowser CLI binary:', err.message);
     process.exitCode = 1;
@@ -82,8 +82,8 @@ async function main() {
   }
 }
 
-function installBackend(binaryPath) {
-  const result = spawnSync(binaryPath, ['backend', 'install'], {
+function bootstrapProxy(binaryPath) {
+  const result = spawnSync(binaryPath, ['proxy', '--help'], {
     stdio: 'inherit',
     env: process.env,
   });
@@ -91,10 +91,10 @@ function installBackend(binaryPath) {
     throw result.error;
   }
   if (typeof result.status === 'number' && result.status !== 0) {
-    throw new Error(`backend install failed with exit code ${result.status}`);
+    throw new Error(`proxy bootstrap failed with exit code ${result.status}`);
   }
   if (result.signal) {
-    throw new Error(`backend install terminated by signal ${result.signal}`);
+    throw new Error(`proxy bootstrap terminated by signal ${result.signal}`);
   }
 }
 

@@ -75,8 +75,8 @@ func newRootCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "anchorbrowser",
 		Short:         "AnchorBrowser CLI",
-		Long:          "AnchorBrowser CLI. Parity browser commands are available at top-level (for example: open, click, snapshot, fill, wait, screenshot). Anchor API commands are under `anchor`.",
-		Example:       "  anchorbrowser open https://example.com\n  anchorbrowser snapshot -i\n  anchorbrowser click @e1\n  anchorbrowser anchor session create --interactive",
+		Long:          "AnchorBrowser CLI. Use `proxy` for parity browser commands and `anchor` for Anchor API commands.",
+		Example:       "  anchorbrowser proxy open https://example.com\n  anchorbrowser proxy snapshot -i\n  anchorbrowser proxy click @e1\n  anchorbrowser anchor session create --interactive",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		CompletionOptions: cobra.CompletionOptions{
@@ -108,7 +108,7 @@ func newRootCommand(app *App) *cobra.Command {
 
 	cmd.AddCommand(newAuthCommand(app))
 	cmd.AddCommand(newAnchorCommand(app))
-	cmd.AddCommand(newBackendCommand(app))
+	cmd.AddCommand(newProxyCommand(app))
 	cmd.AddCommand(newVersionCommand(app))
 	cmd.AddCommand(newUpdateCommand(app))
 	cmd.AddCommand(newInternalCompletionCommand())

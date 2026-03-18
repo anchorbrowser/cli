@@ -29,8 +29,7 @@ make build
 
 ## Command model
 
-Top-level commands are parity-first (`open`, `click`, `snapshot`, `fill`, `get`, `wait`, `screenshot`, etc.) and are executed through pinned `agent-browser` backend (`v0.20.13`).
-Root help (`anchorbrowser --help`) is runtime-sourced from the backend and white-labeled.
+`agent-browser` parity commands are available through the `proxy` command (`anchorbrowser proxy ...`) and are executed through pinned backend (`v0.20.13`).
 
 Anchor API-specific commands are namespaced under `anchor`:
 
@@ -44,7 +43,7 @@ Operational commands remain top-level:
 
 ```bash
 anchorbrowser auth ...
-anchorbrowser backend ...
+anchorbrowser proxy ...
 anchorbrowser update
 anchorbrowser version
 ```
@@ -73,12 +72,12 @@ anchorbrowser auth current
 Examples (mirroring `agent-browser` style):
 
 ```bash
-anchorbrowser open https://example.com
-anchorbrowser snapshot -i
-anchorbrowser click @e1
-anchorbrowser fill @e2 "hello"
-anchorbrowser screenshot page.png
-anchorbrowser close
+anchorbrowser proxy open https://example.com
+anchorbrowser proxy snapshot -i
+anchorbrowser proxy click @e1
+anchorbrowser proxy fill @e2 "hello"
+anchorbrowser proxy screenshot page.png
+anchorbrowser proxy close
 ```
 
 Session bridge behavior for parity commands:
@@ -97,7 +96,7 @@ For authenticated browsing, pre-create an authenticated Anchor session and then 
 
 ```bash
 anchorbrowser anchor session create --interactive
-anchorbrowser open https://your-app.example
+anchorbrowser proxy open https://your-app.example
 ```
 
 Power-user flags for parity commands (intentionally hidden):
@@ -106,25 +105,15 @@ Power-user flags for parity commands (intentionally hidden):
 - `--new-session`
 - `--no-cache`
 
-## Backend management
+## Proxy bootstrap
 
 Backend bootstrap is strict at install time:
 
-- Homebrew install runs `anchorbrowser backend install`
-- npm postinstall runs `anchorbrowser backend install`
+- Homebrew install runs `anchorbrowser proxy --help`
+- npm postinstall runs `anchorbrowser proxy --help`
 - install fails if backend bootstrap fails
 
 Runtime auto-install/self-heal still applies if users manually remove/corrupt backend binaries.
-
-Manual lifecycle commands:
-
-```bash
-anchorbrowser backend install
-anchorbrowser backend status
-anchorbrowser backend path
-anchorbrowser backend doctor
-anchorbrowser backend uninstall
-```
 
 ## Anchor namespace commands
 

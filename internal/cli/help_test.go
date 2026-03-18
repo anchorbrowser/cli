@@ -17,32 +17,7 @@ func (f fakeHelpBackendManager) EnsureInstalled(_ context.Context) (string, erro
 	return f.path, f.err
 }
 
-func TestRenderRootHelpIncludesParityAndAnchorCommands(t *testing.T) {
-	origMgr := newHelpBackendManagerFn
-	origRun := runHelpBackendCommandFn
-	defer func() {
-		newHelpBackendManagerFn = origMgr
-		runHelpBackendCommandFn = origRun
-	}()
-
-	newHelpBackendManagerFn = func() (backendInstaller, error) {
-		return fakeHelpBackendManager{path: "/tmp/anchorbrowser-backend"}, nil
-	}
-	runHelpBackendCommandFn = func(_ context.Context, _ string, _ io.Reader, _ ...string) ([]byte, error) {
-		return []byte(`
-agent-browser - fast browser automation CLI for AI agents
-Core Commands:
-  open <url>                 Navigate to URL
-  click <sel>                Click element
-  snapshot                   Accessibility tree with refs
-Network:  agent-browser network <action>
-Setup:
-  install                    Install browser binaries
-Environment:
-  AGENT_BROWSER_SESSION      Session name
-`), nil
-	}
-
+func TestRenderRootHelpIncludesProxyAndAnchorCommands(t *testing.T) {
 	app, err := NewApp("test")
 	if err != nil {
 		t.Fatalf("NewApp: %v", err)
@@ -58,14 +33,9 @@ Environment:
 	text := out.String()
 	for _, mustContain := range []string{
 		"Available Commands:",
-		"open",
-		"click",
-		"snapshot",
-		"network",
-		"install",
 		"anchor",
 		"auth",
-		"backend",
+		"proxy",
 		"update",
 		"version",
 	} {
@@ -73,47 +43,21 @@ Environment:
 			t.Fatalf("expected root help to contain %q\n%s", mustContain, text)
 		}
 	}
-	for _, mustNotContain := range []string{"agent-browser", "AGENT_BROWSER_", "~/.agent-browser"} {
+	for _, mustNotContain := range []string{"backend"} {
 		if strings.Contains(text, mustNotContain) {
-			t.Fatalf("expected root help to be white-labeled and not contain %q\n%s", mustNotContain, text)
+			t.Fatalf("expected root help to hide %q\n%s", mustNotContain, text)
 		}
 	}
 }
 
-func TestHelpCommandRoutesParity(t *testing.T) {
-	origRunParity := runParityCommandFn
-	origNewApp := newAppFn
-	defer func() {
-		runParityCommandFn = origRunParity
-		newAppFn = origNewApp
-	}()
-
-	runParityCalled := false
-	runParityCommandFn = func(_ *App, parsed *parityParsedArgs) error {
-		runParityCalled = true
-		if parsed.CommandToken != "click" {
-			t.Fatalf("expected click command token, got %q", parsed.CommandToken)
-		}
-		if !hasHelpOrVersionFlag(parsed.BackendArgs) {
-			t.Fatalf("expected help flag for parity help, got %v", parsed.BackendArgs)
-		}
-		return nil
+func TestHelpCommandRejectsDirectParityTopic(t *testing.T) {
+	var out, errOut bytes.Buffer
+	err := executeWithIO("test", []string{"help", "click"}, strings.NewReader(""), &out, &errOut)
+	if err == nil {
+		t.Fatalf("expected help click to be rejected")
 	}
-	newAppFn = func(version string) (*App, error) {
-		return &App{
-			Version: version,
-			Global:  &GlobalOptions{BaseURL: "https://api.anchorbrowser.io", Timeout: 2, Output: "json"},
-			Stdin:   strings.NewReader(""),
-			Stdout:  &bytes.Buffer{},
-			Stderr:  &bytes.Buffer{},
-		}, nil
-	}
-
-	if err := executeWithIO("test", []string{"help", "click"}, strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
-		t.Fatalf("executeWithIO(help click): %v", err)
-	}
-	if !runParityCalled {
-		t.Fatalf("expected parity help route to be used")
+	if !strings.Contains(err.Error(), "proxy") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

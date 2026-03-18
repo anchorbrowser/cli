@@ -13,7 +13,7 @@ var reservedCommands = map[string]struct{}{
 	"auth":             {},
 	"update":           {},
 	"version":          {},
-	"backend":          {},
+	"proxy":            {},
 	"anchor":           {},
 	"help":             {},
 	"__complete":       {},
@@ -64,20 +64,7 @@ func executeWithIO(version string, args []string, stdin io.Reader, stdout, stder
 		return fmt.Errorf("`%s` moved under the anchor namespace. use `anchorbrowser anchor %s ...`", first, first)
 	}
 
-	app, err := newAppFn(version)
-	if err != nil {
-		return err
-	}
-	app.Stdin = stdin
-	app.Stdout = stdout
-	app.Stderr = stderr
-
-	parsed, err := parseParityArgs(args)
-	if err != nil {
-		return err
-	}
-	applyParityGlobals(app, parsed.Global)
-	return runParityCommandFn(app, parsed)
+	return fmt.Errorf("unknown command %q. agent-browser commands are available via `anchorbrowser proxy ...`", first)
 }
 
 func isReservedCommand(token string) bool {
@@ -178,25 +165,7 @@ func runHelpCommand(version string, args []string, stdin io.Reader, stdout, stde
 		rootCmd.SetArgs(args)
 		return rootCmd.Execute()
 	}
-
-	if !hasHelpOrVersionFlag(withoutHelp) {
-		withoutHelp = append(withoutHelp, "--help")
-	}
-
-	app, err := newAppFn(version)
-	if err != nil {
-		return err
-	}
-	app.Stdin = stdin
-	app.Stdout = stdout
-	app.Stderr = stderr
-
-	parsed, err := parseParityArgs(withoutHelp)
-	if err != nil {
-		return err
-	}
-	applyParityGlobals(app, parsed.Global)
-	return runParityCommandFn(app, parsed)
+	return fmt.Errorf("unknown help topic %q. agent-browser commands are available via `anchorbrowser proxy ...`", target)
 }
 
 func removeFirstPositionalToken(args []string) ([]string, string) {

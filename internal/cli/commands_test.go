@@ -77,3 +77,16 @@ func TestSessionCreateInteractiveRejectsDryRun(t *testing.T) {
 		t.Fatalf("expected validation error for --interactive with --dry-run")
 	}
 }
+
+func TestProxyCommandExistsAndBackendCommandIsUnavailable(t *testing.T) {
+	cmd, err := NewRootCommand("test")
+	if err != nil {
+		t.Fatalf("NewRootCommand: %v", err)
+	}
+	if _, _, err := cmd.Find([]string{"proxy"}); err != nil {
+		t.Fatalf("expected top-level proxy command to exist: %v", err)
+	}
+	if _, _, err := cmd.Find([]string{"backend"}); err == nil {
+		t.Fatalf("expected top-level backend command to be unavailable")
+	}
+}

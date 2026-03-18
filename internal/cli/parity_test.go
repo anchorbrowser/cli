@@ -85,6 +85,41 @@ func TestReservedCommandDispatchesToCobra(t *testing.T) {
 	}
 }
 
+func TestDirectParityCommandRequiresProxy(t *testing.T) {
+	var out, errOut bytes.Buffer
+	err := executeWithIO("test", []string{"click", "@e1"}, strings.NewReader(""), &out, &errOut)
+	if err == nil {
+		t.Fatalf("expected direct parity command to be rejected")
+	}
+	if !strings.Contains(err.Error(), "proxy") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestProxyCommandRoutesToParityRunner(t *testing.T) {
+	origRunParity := runParityCommandFn
+	defer func() {
+		runParityCommandFn = origRunParity
+	}()
+
+	runParityCalled := false
+	runParityCommandFn = func(_ *App, parsed *parityParsedArgs) error {
+		runParityCalled = true
+		if parsed.CommandToken != "click" {
+			t.Fatalf("expected click command token, got %q", parsed.CommandToken)
+		}
+		return nil
+	}
+
+	var out, errOut bytes.Buffer
+	if err := executeWithIO("test", []string{"proxy", "click", "@e1"}, strings.NewReader(""), &out, &errOut); err != nil {
+		t.Fatalf("expected proxy command to route to parity runner: %v", err)
+	}
+	if !runParityCalled {
+		t.Fatalf("expected proxy command to invoke parity runner")
+	}
+}
+
 func TestCompletionProbeCommandsDispatchToCobra(t *testing.T) {
 	origRunParity := runParityCommandFn
 	defer func() {
