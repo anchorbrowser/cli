@@ -27,8 +27,13 @@ func TestGoreleaserBrewInstallBootstrapsProxy(t *testing.T) {
 		t.Fatalf("read goreleaser config: %v", err)
 	}
 	text := string(data)
-	if !strings.Contains(text, `system "#{bin}/anchorbrowser", "proxy", "--help"`) {
-		t.Fatalf("expected goreleaser brew install stanza to run proxy help bootstrap")
+	// Bootstrap must run in post_install (outside Homebrew's network sandbox)
+	// rather than in the install block which blocks network access on macOS.
+	if !strings.Contains(text, "def post_install") || !strings.Contains(text, `system "#{bin}/anchorbrowser", "proxy", "install"`) {
+		t.Fatalf("expected goreleaser brew post_install to bootstrap proxy runtime via 'proxy install'")
+	}
+	if strings.Contains(text, `system "#{bin}/anchorbrowser", "proxy", "--help"`) {
+		t.Fatalf("goreleaser brew install stanza must not run proxy bootstrap (network blocked in Homebrew sandbox)")
 	}
 }
 
