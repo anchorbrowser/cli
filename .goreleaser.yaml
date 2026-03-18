@@ -46,8 +46,11 @@ brews:
     license: MIT
     install: |
       bin.install "anchorbrowser"
-      system "#{bin}/anchorbrowser", "proxy", "--help"
       generate_completions_from_executable(bin/"anchorbrowser", "__completion")
+    custom_block: |
+      def post_install
+        system "#{bin}/anchorbrowser", "proxy", "install"
+      end
     test: |
       system "#{bin}/anchorbrowser", "version"
 
